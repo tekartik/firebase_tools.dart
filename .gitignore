@@ -1,0 +1,10 @@
+# Ide
+.vscode/
+.idea/
+*.iml
+
+# Local
+.local
+pubspec_overrides.yaml
+/pubspec.lock
+.dart_tool/

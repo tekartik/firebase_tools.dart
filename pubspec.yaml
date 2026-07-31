@@ -1,0 +1,7 @@
+name: _
+publish_to: none
+environment:
+  sdk: ^3.12.0
+workspace:
+  - packages/firebase_tools
+  - packages/firebase_tools_common
