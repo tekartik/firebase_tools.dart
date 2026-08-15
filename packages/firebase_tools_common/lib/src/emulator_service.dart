@@ -412,7 +412,7 @@ class FirebaseEmulatorService {
 
       await completer.future.timeout(timeout);
 
-      return createEmulator(
+      return await createEmulator(
         path: path,
         options: options,
         shell: shell,
