@@ -64,17 +64,21 @@ class EmulatorServiceRunningStatus implements EmulatorServiceStatus {
   /// The port on which the Functions emulator is running, if active.
   final int? functionsPort;
 
+  /// The port on which the Pub/Sub emulator is running, if active.
+  final int? pubsubPort;
+
   /// Creates a new [EmulatorServiceRunningStatus] with the specified emulator ports.
   EmulatorServiceRunningStatus({
     required this.firestorePort,
     required this.authPort,
     required this.storagePort,
     required this.functionsPort,
+    this.pubsubPort,
   });
 
   @override
   String toString() {
-    return 'EmulatorServiceRunningStatus(firestorePort: $firestorePort, authPort: $authPort, storagePort: $storagePort, functionsPort: $functionsPort)';
+    return 'EmulatorServiceRunningStatus(firestorePort: $firestorePort, authPort: $authPort, storagePort: $storagePort, functionsPort: $functionsPort, pubsubPort: $pubsubPort)';
   }
 
   @override
@@ -169,6 +173,7 @@ class FirebaseEmulatorService {
       authPort: runningServices['auth'],
       storagePort: runningServices['storage'],
       functionsPort: runningServices['functions'],
+      pubsubPort: runningServices['pubsub'],
     );
   }
 
@@ -191,6 +196,10 @@ class FirebaseEmulatorService {
     }
     if ((options.onlyStorage ?? false) && running.storagePort == null) {
       stderr.writeln('Emulator is running but storage is not running');
+      return false;
+    }
+    if ((options.onlyPubsub ?? false) && running.pubsubPort == null) {
+      stderr.writeln('Emulator is running but pubsub is not running');
       return false;
     }
     return true;
@@ -396,8 +405,10 @@ class FirebaseEmulatorService {
     var onlyAuth = options.onlyAuth ?? false;
     var onlyFirestore = options.onlyFirestore ?? false;
     var onlyStorage = options.onlyStorage ?? false;
+    var onlyPubsub = options.onlyPubsub ?? false;
 
-    var only = onlyFunctions || onlyAuth || onlyFirestore || onlyStorage;
+    var only =
+        onlyFunctions || onlyAuth || onlyFirestore || onlyStorage || onlyPubsub;
 
     var persistPath = options.persistPath;
     try {
@@ -406,7 +417,7 @@ class FirebaseEmulatorService {
         ' --project $projectId'
         '${(options.debug ?? false) ? ' --debug' : ''}'
         ' emulators:start'
-        '${only ? ' --only ${[if (onlyFunctions) 'functions', if (onlyAuth) 'auth', if (onlyFirestore) 'firestore', if (onlyStorage) 'storage'].join(',')}' : ''}'
+        '${only ? ' --only ${[if (onlyFunctions) 'functions', if (onlyAuth) 'auth', if (onlyFirestore) 'firestore', if (onlyStorage) 'storage', if (onlyPubsub) 'pubsub'].join(',')}' : ''}'
         '${persistPath != null ? ' --import $persistPath --export-on-exit $persistPath' : ''}',
       );
 

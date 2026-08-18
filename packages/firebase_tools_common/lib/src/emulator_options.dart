@@ -17,6 +17,9 @@ class FirebaseEmulatorOptions {
   /// If true, only storage is started
   bool? onlyStorage;
 
+  /// If true, only pubsub is started
+  bool? onlyPubsub;
+
   /// If true, the emulator is started in debug mode.
   bool? debug;
 
@@ -35,6 +38,7 @@ class FirebaseEmulatorOptions {
     this.onlyAuth,
     this.onlyFirestore,
     this.onlyStorage,
+    this.onlyPubsub,
     this.persistPath,
     this.processStartMode,
   });
@@ -46,6 +50,7 @@ class FirebaseEmulatorOptions {
     bool? onlyAuth,
     bool? onlyFirestore,
     bool? onlyStorage,
+    bool? onlyPubsub,
     bool? debug,
     String? persistPath,
     ProcessStartMode? processStartMode,
@@ -56,6 +61,7 @@ class FirebaseEmulatorOptions {
       onlyAuth: onlyAuth ?? this.onlyAuth,
       onlyFirestore: onlyFirestore ?? this.onlyFirestore,
       onlyStorage: onlyStorage ?? this.onlyStorage,
+      onlyPubsub: onlyPubsub ?? this.onlyPubsub,
       debug: debug ?? this.debug,
       persistPath: persistPath ?? this.persistPath,
       processStartMode: processStartMode ?? this.processStartMode,
@@ -64,6 +70,6 @@ class FirebaseEmulatorOptions {
 
   @override
   String toString() {
-    return 'FirebaseEmulatorOptions(projectId: $projectId, onlyFunctions: $onlyFunctions, onlyAuth: $onlyAuth, onlyFirestore: $onlyFirestore, onlyStorage: $onlyStorage, debug: $debug, persistPath: $persistPath, processStartMode: $processStartMode)';
+    return 'FirebaseEmulatorOptions(projectId: $projectId, onlyFunctions: $onlyFunctions, onlyAuth: $onlyAuth, onlyFirestore: $onlyFirestore, onlyStorage: $onlyStorage, onlyPubsub: $onlyPubsub, debug: $debug, persistPath: $persistPath, processStartMode: $processStartMode)';
   }
 }
