@@ -16,10 +16,40 @@ String _newFirebaseFolder(String name, Map<String, String> files) {
   }
   directory.createSync(recursive: true);
   files.forEach((fileName, content) {
-    File(join(path, fileName)).writeAsStringSync(content);
+    File(join(path, fileName))
+      ..parent.createSync(recursive: true)
+      ..writeAsStringSync(content);
   });
   return path;
 }
+
+/// A `pubspec.yaml` content for a package [name] at [version].
+String _pubspecContent(String name, String version) =>
+    '''
+name: $name
+version: $version
+environment:
+  sdk: ^3.12.0
+''';
+
+/// A generated `lib/src/version.dart` content at [version], as
+/// `tekartik_common_build` writes it.
+String _versionFileContent(String version) =>
+    '''
+/// Generated - do not edit
+library;
+// ignore: depend_on_referenced_packages
+import 'package:pub_semver/pub_semver.dart';
+
+/// Package version text
+const packageVersionText = '$version';
+/// Package version
+final packageVersion = Version.parse(packageVersionText);
+''';
+
+/// The `lib/src/version.dart` file of the package at [path].
+File _versionFile(String path) =>
+    File(join(path, 'lib', 'src', 'version.dart'));
 
 void main() {
   group('firebaseFunctionsDeployOnly', () {
@@ -185,5 +215,76 @@ void main() {
       options: FirebaseProjectOptions(projectId: 'my_project', path: 'b'),
     );
     expect(builder.path, normalize(absolute('b')));
+  });
+
+  group('generateFunctionsVersionIfNeeded', () {
+    FirebaseProjectBuilder builderAt(String path) => FirebaseProjectBuilder(
+      options: FirebaseProjectOptions(projectId: 'my_project', path: path),
+    );
+
+    test(
+      'regenerates the firebase folder and functions version files',
+      () async {
+        var path = _newFirebaseFolder('project_version', {
+          'firebase.json': '{}',
+          'pubspec.yaml': _pubspecContent('test_dartff', '1.2.3'),
+          join('lib', 'src', 'version.dart'): _versionFileContent('0.0.1'),
+          join('functions', 'pubspec.yaml'): _pubspecContent(
+            'test_dartff_functions',
+            '4.5.6',
+          ),
+          join('functions', 'lib', 'src', 'version.dart'): _versionFileContent(
+            '0.0.1',
+          ),
+        });
+        await builderAt(path).generateFunctionsVersionIfNeeded();
+        expect(
+          _versionFile(path).readAsStringSync(),
+          contains("const packageVersionText = '1.2.3';"),
+        );
+        expect(
+          _versionFile(join(path, 'functions')).readAsStringSync(),
+          contains("const packageVersionText = '4.5.6';"),
+        );
+      },
+    );
+
+    test(
+      'generateVersion of CommonAppBuilder applies to the firebase folder',
+      () async {
+        var path = _newFirebaseFolder('project_version_common', {
+          'firebase.json': '{}',
+          'pubspec.yaml': _pubspecContent('test_dartff', '1.2.3'),
+          join('lib', 'src', 'version.dart'): _versionFileContent('0.0.1'),
+        });
+        await builderAt(path).generateVersion();
+        expect(
+          _versionFile(path).readAsStringSync(),
+          contains("const packageVersionText = '1.2.3';"),
+        );
+      },
+    );
+
+    test('leaves a package without a generated version file alone', () async {
+      var path = _newFirebaseFolder('project_no_version', {
+        'firebase.json': '{}',
+        'pubspec.yaml': _pubspecContent('test_dartff', '1.2.3'),
+        join('functions', 'pubspec.yaml'): _pubspecContent(
+          'test_dartff_functions',
+          '4.5.6',
+        ),
+      });
+      await builderAt(path).generateFunctionsVersionIfNeeded();
+      expect(_versionFile(path).existsSync(), isFalse);
+      expect(_versionFile(join(path, 'functions')).existsSync(), isFalse);
+    });
+
+    test('leaves a firebase folder that is no package alone', () async {
+      var path = _newFirebaseFolder('project_no_pubspec', {
+        'firebase.json': '{}',
+      });
+      await builderAt(path).generateFunctionsVersionIfNeeded();
+      expect(_versionFile(path).existsSync(), isFalse);
+    });
   });
 }

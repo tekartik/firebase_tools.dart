@@ -1,6 +1,6 @@
 name: tekartik_firebase_tools
 description: Firebase developer tools - the admin sdk flavour of tekartik_firebase_tools_common, and the main dev menu
-version: 0.1.0
+version: 0.1.1
 publish_to: none
 
 environment:

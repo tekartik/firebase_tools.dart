@@ -128,6 +128,27 @@ behind all of this are exported too and work on plain strings, no bucket
 needed: `storagePathJoin`, `storagePathRelative`, `storagePathResolve`,
 `storageNameMatchesFilter`, `storageDirectoryNamesFromPaths`, …
 
+## Deploying a project
+
+`FirebaseProjectBuilder` runs the `firebase` cli commands of one firebase
+folder: `deployFunctions`, `deployFirestoreRules`, `deployFirestoreIndexes`,
+`deployStorageRules`, `deploy` for everything, and `serve` for the emulators.
+
+```dart
+import 'package:tekartik_firebase_tools_common/firebase_project.dart';
+
+var builder = FirebaseProjectBuilder(
+  options: FirebaseProjectOptions.firebaseFolder(path: 'my_app_dartff'),
+);
+await builder.deployFunctions(functions: ['commanddartv2dev']);
+```
+
+The builder is a `CommonAppBuilder` of `tekartik_common_build`, so
+`generateVersion` and `bumpVersion` apply to the firebase folder package.
+Deploying or compiling the functions regenerates `lib/src/version.dart` first,
+in the firebase folder package and in the functions package, for those that
+have one — a bumped `pubspec.yaml` is never deployed with a stale version file.
+
 ## Menus
 
 `menuFirebaseExplorerContent` declares the auth, firestore and storage
@@ -140,3 +161,11 @@ selected user and the name filter carry across them.
 
 For the whole thing in one call, see `firebaseToolsMenuMain` in
 `tekartik_firebase_tools`.
+
+## Agent skills
+
+The `skills/` folder holds the agent skills of this package, one per area:
+`tekartik-firebase-tools-common-emulator`,
+`tekartik-firebase-tools-common-deploy` and
+`tekartik-firebase-tools-common-explorer`. `dart run skills@ get` installs the
+skills of every dependency into `.agents/skills/`.

@@ -79,3 +79,10 @@ firestore console shows them in italics.
 What to do with a context is the common package's business; see
 [its README](../firebase_tools_common/README.md#exploring-a-project) for the
 auth, firestore and storage explorers and the path helpers.
+
+## Agent skills
+
+The `skills/` folder holds `tekartik-firebase-tools-dev-menu`, the agent skill
+of this package (the main menu and the admin sdk contexts); the common package
+has one per area (emulator, deploy, explorer). `dart run skills@ get` installs
+the skills of every dependency into `.agents/skills/`.

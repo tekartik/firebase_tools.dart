@@ -1,3 +1,11 @@
+## 0.1.2
+
+- `FirebaseProjectBuilder` is a `CommonAppBuilder` of `tekartik_common_build`;
+  `deployFunctions` and `compileFunctions` regenerate the generated
+  `lib/src/version.dart` of the firebase folder package and of the functions
+  package first (`generateFunctionsVersionIfNeeded`).
+- Agent skills in `skills/`: emulator, deploy, explorer.
+
 ## 0.1.1
 
 - `force` option (`firebase deploy --force`) on the `FirebaseProjectBuilder`

@@ -3,6 +3,8 @@ import 'dart:io';
 
 import 'package:path/path.dart';
 import 'package:process_run/shell.dart';
+import 'package:tekartik_common_build/common_app_builder.dart';
+import 'package:tekartik_common_build/version_io.dart' as version_io;
 
 /// Lets callers cancel an in-progress [FirebaseProjectBuilder] action
 /// (deploy, serve, etc).
@@ -220,12 +222,19 @@ String firebaseDeployCommand({
 /// [FirebaseProjectActionController.cancel] can abort the deploy, and a
 /// `force` flag adding `--force` to the command (see
 /// [firebaseDeployCommand]).
-class FirebaseProjectBuilder {
+///
+/// It is a [CommonAppBuilder] rooted at [path], so the version helpers of
+/// `tekartik_common_build` (`generateVersion`, `bumpVersion`, see
+/// [CommonAppBuilderExt]) apply to the firebase folder package. Deploying or
+/// compiling the functions regenerates the version files first, see
+/// [generateFunctionsVersionIfNeeded].
+class FirebaseProjectBuilder implements CommonAppBuilder {
   /// The project this builder targets.
   final FirebaseProjectOptions options;
 
   /// The absolute working directory the `firebase` commands run in, i.e.
   /// [FirebaseProjectOptions.path].
+  @override
   String get path => options.path;
 
   /// Creates a builder for the project described by [options].
@@ -287,7 +296,30 @@ class FirebaseProjectBuilder {
     bool? force,
   }) => _deploy('storage', controller, force: force);
 
-  /// Deploys Cloud Functions via `firebase deploy --only functions[:name,...]`.
+  /// Regenerates the version files the cloud functions are built from, so
+  /// the deployed functions report the version of their `pubspec.yaml`.
+  ///
+  /// In the `*_dartff` layout the firebase folder at [path] and the functions
+  /// source folder at [FirebaseProjectOptions.functionsSourcePath] are each a
+  /// dart package. For each of them that has a generated
+  /// `lib/src/version.dart` (see `generateVersion` of
+  /// `tekartik_common_build`, and [CommonAppBuilderExt.generateVersion]), the
+  /// file is rewritten from the version of the package `pubspec.yaml`. A
+  /// folder without one — a package that never opted in, or a plain firebase
+  /// folder that is no package at all — is left alone.
+  ///
+  /// [deployFunctions] and [compileFunctions] call it first, so a bumped
+  /// `pubspec.yaml` is never deployed with a stale version file.
+  Future<void> generateFunctionsVersionIfNeeded() async {
+    for (var packagePath in {path, options.functionsSourcePath}) {
+      if (await version_io.hasGeneratedVersionFile(path: packagePath)) {
+        await version_io.generateVersion(path: packagePath);
+      }
+    }
+  }
+
+  /// Deploys Cloud Functions via `firebase deploy --only functions[:name,...]`,
+  /// after regenerating the version files ([generateFunctionsVersionIfNeeded]).
   ///
   /// [functions] overrides [FirebaseProjectOptions.functions] as the list
   /// of function names to deploy; if both are `null`/empty, all functions
@@ -300,19 +332,25 @@ class FirebaseProjectBuilder {
     List<String>? functions,
     FirebaseProjectActionController? controller,
     bool? force,
-  }) => _deploy(
-    firebaseFunctionsDeployOnly(functions ?? options.functions),
-    controller,
-    force: force,
-  );
+  }) async {
+    await generateFunctionsVersionIfNeeded();
+    await _deploy(
+      firebaseFunctionsDeployOnly(functions ?? options.functions),
+      controller,
+      force: force,
+    );
+  }
 
   /// Compiles the dart cloud functions server to an executable, i.e.
   /// `dart compile exe <functionsEntryPoint>` in the functions source folder,
-  /// for the os/arch the firebase dart runtime expects.
+  /// for the os/arch the firebase dart runtime expects, after regenerating
+  /// the version files ([generateFunctionsVersionIfNeeded]) so the
+  /// executable embeds the current version.
   ///
   /// See [FirebaseProjectOptions.functionsSource] and friends for what is
   /// compiled and how.
   Future<void> compileFunctions() async {
+    await generateFunctionsVersionIfNeeded();
     var shell = Shell(workingDirectory: options.functionsSourcePath);
     await shell.run(
       'dart compile exe ${options.functionsEntryPoint}'
