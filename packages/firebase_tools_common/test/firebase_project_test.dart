@@ -44,6 +44,41 @@ void main() {
     });
   });
 
+  group('firebaseDeployCommand', () {
+    test('deploys everything by default', () {
+      expect(
+        firebaseDeployCommand(projectId: 'my_project'),
+        'firebase deploy --project my_project',
+      );
+    });
+
+    test('restricts to only', () {
+      expect(
+        firebaseDeployCommand(projectId: 'my_project', only: 'functions:a'),
+        'firebase deploy --only functions:a --project my_project',
+      );
+    });
+
+    test('force adds --force', () {
+      expect(
+        firebaseDeployCommand(projectId: 'my_project', force: true),
+        'firebase deploy --project my_project --force',
+      );
+      expect(
+        firebaseDeployCommand(
+          projectId: 'my_project',
+          only: 'firestore:indexes',
+          force: true,
+        ),
+        'firebase deploy --only firestore:indexes --project my_project --force',
+      );
+      expect(
+        firebaseDeployCommand(projectId: 'my_project', force: false),
+        'firebase deploy --project my_project',
+      );
+    });
+  });
+
   group('firebaseRcContentProjectId', () {
     test('reads the default project', () {
       expect(

@@ -1,3 +1,8 @@
+## 0.1.1
+
+- `force` option (`firebase deploy --force`) on the `FirebaseProjectBuilder`
+  deploy methods, `firebaseDeployCommand` helper.
+
 ## 0.1.0
 
 - Initial version, aggregating `tekartik_firebase_emulator` and the firebase

@@ -194,8 +194,32 @@ String firebaseFunctionsDeployOnly(List<String>? functions) {
       .join(',');
 }
 
+/// The `firebase deploy` command line for [projectId], restricted to [only]
+/// (a raw comma-separated target list, e.g. `'functions:a,firestore:rules'`)
+/// when given, with `--force` when [force] is true.
+///
+/// `--force` skips the interactive confirmations of the firebase cli: the
+/// cloud functions or firestore indexes no longer in the source are deleted
+/// without asking, and the automatic functions runtime upgrade checks are
+/// bypassed. It has no effect on targets that never prompt (rules, hosting).
+String firebaseDeployCommand({
+  required String projectId,
+  String? only,
+  bool? force,
+}) {
+  var onlyArg = only == null ? '' : ' --only $only';
+  var forceArg = force == true ? ' --force' : '';
+  return 'firebase deploy$onlyArg --project $projectId$forceArg';
+}
+
 /// Runs `firebase` CLI deploy/serve commands for the project described by
 /// [options].
+///
+/// Every deploy method takes an optional [FirebaseProjectActionController]
+/// wired to the underlying shell so that
+/// [FirebaseProjectActionController.cancel] can abort the deploy, and a
+/// `force` flag adding `--force` to the command (see
+/// [firebaseDeployCommand]).
 class FirebaseProjectBuilder {
   /// The project this builder targets.
   final FirebaseProjectOptions options;
@@ -207,44 +231,61 @@ class FirebaseProjectBuilder {
   /// Creates a builder for the project described by [options].
   FirebaseProjectBuilder({required this.options});
 
-  /// Runs `firebase deploy` in [path], restricted to [only] when given.
+  /// Runs `firebase deploy` in [path], restricted to [only] when given,
+  /// with `--force` when [force] is true.
   Future<void> _deploy(
     String? only,
-    FirebaseProjectActionController? controller,
-  ) async {
+    FirebaseProjectActionController? controller, {
+    bool? force,
+  }) async {
     var shell = Shell(workingDirectory: path);
     controller?.shell = shell;
-    var onlyArg = only == null ? '' : ' --only $only';
-    await shell.run('firebase deploy$onlyArg --project ${options.projectId}');
+    await shell.run(
+      firebaseDeployCommand(
+        projectId: options.projectId,
+        only: only,
+        force: force,
+      ),
+    );
   }
 
   /// Deploys Firestore security rules via
   /// `firebase deploy --only firestore:rules`. If [controller] is given,
   /// it's wired to the underlying shell so
   /// [FirebaseProjectActionController.cancel] can abort the deploy.
+  /// [force] adds `--force`, see [firebaseDeployCommand].
   Future<void> deployFirestoreRules({
     FirebaseProjectActionController? controller,
-  }) => _deploy('firestore:rules', controller);
+    bool? force,
+  }) => _deploy('firestore:rules', controller, force: force);
 
   /// Deploys Firestore indexes via
   /// `firebase deploy --only firestore:indexes`. If [controller] is given,
   /// it's wired to the underlying shell so
   /// [FirebaseProjectActionController.cancel] can abort the deploy.
+  /// [force] adds `--force`, deleting the indexes no longer in the source
+  /// without confirmation, see [firebaseDeployCommand].
   Future<void> deployFirestoreIndexes({
     FirebaseProjectActionController? controller,
-  }) => _deploy('firestore:indexes', controller);
+    bool? force,
+  }) => _deploy('firestore:indexes', controller, force: force);
 
   /// Deploys the Firestore rules and indexes at once via
   /// `firebase deploy --only firestore`.
-  Future<void> deployFirestore({FirebaseProjectActionController? controller}) =>
-      _deploy('firestore', controller);
+  /// [force] adds `--force`, see [firebaseDeployCommand].
+  Future<void> deployFirestore({
+    FirebaseProjectActionController? controller,
+    bool? force,
+  }) => _deploy('firestore', controller, force: force);
 
   /// Deploys Storage security rules via `firebase deploy --only storage`.
   /// If [controller] is given, it's wired to the underlying shell so
   /// [FirebaseProjectActionController.cancel] can abort the deploy.
+  /// [force] adds `--force`, see [firebaseDeployCommand].
   Future<void> deployStorageRules({
     FirebaseProjectActionController? controller,
-  }) => _deploy('storage', controller);
+    bool? force,
+  }) => _deploy('storage', controller, force: force);
 
   /// Deploys Cloud Functions via `firebase deploy --only functions[:name,...]`.
   ///
@@ -252,13 +293,17 @@ class FirebaseProjectBuilder {
   /// of function names to deploy; if both are `null`/empty, all functions
   /// are deployed. If [controller] is given, it's wired to the underlying
   /// shell so [FirebaseProjectActionController.cancel] can abort the
-  /// deploy.
+  /// deploy. [force] adds `--force`, deleting the functions no longer in
+  /// the source and bypassing the runtime upgrade checks without
+  /// confirmation, see [firebaseDeployCommand].
   Future<void> deployFunctions({
     List<String>? functions,
     FirebaseProjectActionController? controller,
+    bool? force,
   }) => _deploy(
     firebaseFunctionsDeployOnly(functions ?? options.functions),
     controller,
+    force: force,
   );
 
   /// Compiles the dart cloud functions server to an executable, i.e.
@@ -280,25 +325,35 @@ class FirebaseProjectBuilder {
   Future<void> compileAndDeployFunctions({
     List<String>? functions,
     FirebaseProjectActionController? controller,
+    bool? force,
   }) async {
     await compileFunctions();
-    await deployFunctions(functions: functions, controller: controller);
+    await deployFunctions(
+      functions: functions,
+      controller: controller,
+      force: force,
+    );
   }
 
   /// Deploys via `firebase deploy --only [only]`, where [only] is a raw
   /// comma-separated target list (e.g. `'hosting,firestore:rules'`). If
   /// [controller] is given, it's wired to the underlying shell so
   /// [FirebaseProjectActionController.cancel] can abort the deploy.
+  /// [force] adds `--force`, see [firebaseDeployCommand].
   Future<void> deployOnly(
     String only, {
     FirebaseProjectActionController? controller,
-  }) => _deploy(only, controller);
+    bool? force,
+  }) => _deploy(only, controller, force: force);
 
   /// Deploys every configured target via a plain `firebase deploy`. If
   /// [controller] is given, it's wired to the underlying shell so
   /// [FirebaseProjectActionController.cancel] can abort the deploy.
-  Future<void> deploy({FirebaseProjectActionController? controller}) =>
-      _deploy(null, controller);
+  /// [force] adds `--force`, see [firebaseDeployCommand].
+  Future<void> deploy({
+    FirebaseProjectActionController? controller,
+    bool? force,
+  }) => _deploy(null, controller, force: force);
 
   /// Starts the Firebase emulators via `firebase emulators:start`.
   ///
