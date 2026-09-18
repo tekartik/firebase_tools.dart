@@ -48,12 +48,14 @@ name. It is the firebase part of `tekartik_firebase_build` (the
   action.
 * Dart cloud functions (`*_dartff` layout: the firebase folder is a dart
   package and `functions/bin/server.dart` the entry point of the functions
-  package): `compileFunctions()` runs `dart compile exe` in
-  `functionsSourcePath` for `functionsTargetOs` / `functionsTargetArch`
-  (linux x64 by default) and `compileAndDeployFunctions()` chains both, for
-  a deploy that ships the executable. Override `functionsSource`,
-  `functionsEntryPoint`, `functionsTargetOs` and `functionsTargetArch` in
-  the options when the layout differs.
+  package): `deployFunctions()` is all it takes, the firebase cli runs
+  `dart pub get`, `build_runner` and `dart compile exe` in the functions
+  folder itself before uploading. `compileFunctions()` runs `dart compile
+  exe` in `functionsSourcePath` for `functionsTargetOs` /
+  `functionsTargetArch` (linux x64 by default) as a local compilation check
+  only: its executable is neither deployed nor used by the emulator. Override
+  `functionsSource`, `functionsEntryPoint`, `functionsTargetOs` and
+  `functionsTargetArch` in the options when the layout differs.
 * Versions: the builder is a `CommonAppBuilder` of `tekartik_common_build`
   (re-exported with `CommonAppBuilderExt`), so `generateVersion()`,
   `generateVersionIfNeeded()` and `bumpVersion(patch: true)` act on the

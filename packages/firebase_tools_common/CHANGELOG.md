@@ -1,3 +1,10 @@
+## 0.1.3
+
+- `compileAndDeployFunctions` removed: `firebase deploy` compiles the dart
+  functions itself (`dart pub get`, `build_runner`, `dart compile exe`), no
+  compile step is needed before `deployFunctions`. `compileFunctions` stays as
+  a local compilation check, documented as such.
+
 ## 0.1.2
 
 - `FirebaseProjectBuilder` is a `CommonAppBuilder` of `tekartik_common_build`;

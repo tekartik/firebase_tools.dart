@@ -93,21 +93,26 @@ class FirebaseProjectOptions {
   final List<String>? functions;
 
   /// The functions source folder relative to [path], i.e. the `source` of
-  /// the `functions` entry of `firebase.json`.
+  /// the `functions` entry of `firebase.json`: the dart package of the cloud
+  /// functions.
   ///
-  /// Only used to compile dart cloud functions, see
-  /// [FirebaseProjectBuilder.compileFunctions].
+  /// Its generated version file is regenerated before a deploy
+  /// ([FirebaseProjectBuilder.generateFunctionsVersionIfNeeded]) and
+  /// [FirebaseProjectBuilder.compileFunctions] compiles it.
   final String functionsSource;
 
-  /// The dart entry point compiled to an executable, relative to
-  /// [functionsSource].
+  /// The dart entry point of the functions, relative to [functionsSource],
+  /// compiled by [FirebaseProjectBuilder.compileFunctions] (a local check
+  /// only: `firebase deploy` compiles the same entry point itself).
   final String functionsEntryPoint;
 
-  /// `--target-os` of `dart compile exe`, the os the firebase dart runtime
-  /// runs the compiled functions on.
+  /// `--target-os` of the `dart compile exe` of
+  /// [FirebaseProjectBuilder.compileFunctions], the os the firebase dart
+  /// runtime runs the functions on.
   final String functionsTargetOs;
 
-  /// `--target-arch` of `dart compile exe`.
+  /// `--target-arch` of the `dart compile exe` of
+  /// [FirebaseProjectBuilder.compileFunctions].
   final String functionsTargetArch;
 
   /// Creates options for [projectId], rooted at [path] (defaults to the
@@ -321,6 +326,11 @@ class FirebaseProjectBuilder implements CommonAppBuilder {
   /// Deploys Cloud Functions via `firebase deploy --only functions[:name,...]`,
   /// after regenerating the version files ([generateFunctionsVersionIfNeeded]).
   ///
+  /// Nothing to compile first: for the dart runtime (`"runtime": "dart3"` in
+  /// `firebase.json`) the firebase cli itself runs `dart pub get`,
+  /// `build_runner` (the `functions.yaml` manifest) and `dart compile exe` (or
+  /// `dart build cli`) in the functions folder before uploading.
+  ///
   /// [functions] overrides [FirebaseProjectOptions.functions] as the list
   /// of function names to deploy; if both are `null`/empty, all functions
   /// are deployed. If [controller] is given, it's wired to the underlying
@@ -341,11 +351,15 @@ class FirebaseProjectBuilder implements CommonAppBuilder {
     );
   }
 
-  /// Compiles the dart cloud functions server to an executable, i.e.
+  /// Local compilation check of the dart cloud functions server:
   /// `dart compile exe <functionsEntryPoint>` in the functions source folder,
   /// for the os/arch the firebase dart runtime expects, after regenerating
-  /// the version files ([generateFunctionsVersionIfNeeded]) so the
-  /// executable embeds the current version.
+  /// the version files ([generateFunctionsVersionIfNeeded]).
+  ///
+  /// Not needed before [deployFunctions]: the firebase cli compiles the
+  /// functions itself when deploying, and the executable written here
+  /// (`bin/server.exe` next to the entry point) is not the one it uploads. The
+  /// emulator does not use it either, it runs the entry point with `dart run`.
   ///
   /// See [FirebaseProjectOptions.functionsSource] and friends for what is
   /// compiled and how.
@@ -356,20 +370,6 @@ class FirebaseProjectBuilder implements CommonAppBuilder {
       'dart compile exe ${options.functionsEntryPoint}'
       ' --target-os=${options.functionsTargetOs}'
       ' --target-arch=${options.functionsTargetArch}',
-    );
-  }
-
-  /// Runs [compileFunctions] followed by [deployFunctions].
-  Future<void> compileAndDeployFunctions({
-    List<String>? functions,
-    FirebaseProjectActionController? controller,
-    bool? force,
-  }) async {
-    await compileFunctions();
-    await deployFunctions(
-      functions: functions,
-      controller: controller,
-      force: force,
     );
   }
 
