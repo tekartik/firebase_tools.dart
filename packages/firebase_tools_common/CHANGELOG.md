@@ -1,3 +1,24 @@
+## 0.1.4
+
+- `FirestoreExporter` / `FirestoreExportOptions`: the `gcloud firestore
+  export` and `import` of a project, to a dated folder of a cloud storage
+  bucket, `<projectId>-backup` unless another is named.
+  `menuFirestoreExportContent` declares them in a `dev_build` menu, and the
+  command lines are built by `firestoreExportCommand` /
+  `firestoreImportCommand`.
+- `checkBucket` / `ensureBucket` / `databaseLocation` / `bucketLocation`:
+  firestore only exports to a bucket in the location of the database, so the
+  backup bucket is created there on first use and a mismatch is reported
+  before the export rather than by `gcloud` after it
+  (`firestoreExportLocationMatches`).
+- `listExportNames` / `latestExportName` / `sizeOf` / `usageOf`: the exports
+  already in the bucket, and the size and file count of one (`gcloud storage
+  ls`, `gcloud storage du`), with `storageSizeText` for a readable byte count.
+- `exportOperation` / `listExportOperations`: the document count and the state
+  of an export, from `gcloud firestore operations list` — the bucket holds no
+  record count.
+- Agent skill `tekartik-firebase-tools-common-export`.
+
 ## 0.1.3
 
 - `compileAndDeployFunctions` removed: `firebase deploy` compiles the dart

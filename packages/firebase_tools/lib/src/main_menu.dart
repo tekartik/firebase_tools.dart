@@ -5,8 +5,9 @@ import 'package:tekartik_firebase_tools_common/menu.dart';
 import 'firebase_admin_sdk_context.dart';
 
 /// Declares the whole firebase tools menu for one firebase project: its
-/// emulator suite, its `firebase` cli deploy commands, and the explorer of its
-/// auth users, firestore database and storage bucket.
+/// emulator suite, its `firebase` cli deploy commands, the explorer of its
+/// auth users, firestore database and storage bucket, and the export of its
+/// firestore database to a cloud storage bucket.
 ///
 /// [path] is the firebase folder, i.e. the one holding `firebase.json`,
 /// defaulting to the current directory. [projectId] names the project to reach;
@@ -16,11 +17,11 @@ import 'firebase_admin_sdk_context.dart';
 ///
 /// [context] is what the explorer acts on, the ambient admin sdk credentials of
 /// [projectId] by default (see [newFirebaseToolsContextAdminSdk]).
-/// [emulatorOptions] and [projectOptions] likewise override what the emulator
-/// and deploy submenus use.
+/// [emulatorOptions], [projectOptions] and [exportOptions] likewise override
+/// what the emulator, deploy and export submenus use.
 ///
-/// [withEmulator], [withProject] and [withExplorer] each drop their submenu when
-/// set to `false`, for a tool that only wants some of it.
+/// [withEmulator], [withProject], [withExplorer] and [withExport] each drop
+/// their submenu when set to `false`, for a tool that only wants some of it.
 ///
 /// Everything the explorer does goes through privileged credentials: it reads
 /// and creates auth users, and bypasses the firestore rules. This belongs in a
@@ -31,9 +32,11 @@ void menuFirebaseToolsContent({
   FirebaseToolsContext? context,
   FirebaseEmulatorOptions? emulatorOptions,
   FirebaseProjectOptions? projectOptions,
+  FirestoreExportOptions? exportOptions,
   bool withEmulator = true,
   bool withProject = true,
   bool withExplorer = true,
+  bool withExport = true,
 }) {
   var folderPath = path ?? '.';
   // Read once: every submenu wants it, and reading it twice would report the
@@ -41,6 +44,7 @@ void menuFirebaseToolsContent({
   var folderProjectId =
       projectId ??
       projectOptions?.projectId ??
+      exportOptions?.projectId ??
       firebaseFolderProjectId(path: folderPath);
 
   if (withEmulator) {
@@ -78,6 +82,18 @@ void menuFirebaseToolsContent({
       );
     });
   }
+
+  if (withExport) {
+    menu('export', () {
+      menuFirestoreExportContent(
+        exporter: FirestoreExporter(
+          options:
+              exportOptions ??
+              FirestoreExportOptions(projectId: folderProjectId),
+        ),
+      );
+    });
+  }
 }
 
 /// Runs the whole firebase tools console menu of one firebase project, i.e.
@@ -99,9 +115,11 @@ Future<void> firebaseToolsMenuMain(
   FirebaseToolsContext? context,
   FirebaseEmulatorOptions? emulatorOptions,
   FirebaseProjectOptions? projectOptions,
+  FirestoreExportOptions? exportOptions,
   bool withEmulator = true,
   bool withProject = true,
   bool withExplorer = true,
+  bool withExport = true,
 }) async {
   mainMenuConsole(arguments, () {
     menuFirebaseToolsContent(
@@ -110,9 +128,11 @@ Future<void> firebaseToolsMenuMain(
       context: context,
       emulatorOptions: emulatorOptions,
       projectOptions: projectOptions,
+      exportOptions: exportOptions,
       withEmulator: withEmulator,
       withProject: withProject,
       withExplorer: withExplorer,
+      withExport: withExport,
     );
   });
 }

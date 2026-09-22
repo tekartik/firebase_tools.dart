@@ -16,3 +16,4 @@ export 'src/explorer_menu.dart'
         menuStorageExplorerContent;
 export 'src/firebase_project_menu.dart'
     show menuFirebaseProjectBuilderContent, menuFirebaseProjectContent;
+export 'src/firestore_export_menu.dart' show menuFirestoreExportContent;

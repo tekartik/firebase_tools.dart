@@ -4,7 +4,8 @@ description: >-
   Use when writing a dart dev tool (tool/ script or dev_build console menu)
   over a real firebase project with tekartik_firebase_tools: the one-call main
   menu (firebaseToolsMenuMain, menuFirebaseToolsContent) with its emulator,
-  deploy and explorer submenus, and reaching a project through the admin sdk
+  deploy, explorer and firestore export submenus, and reaching a project
+  through the admin sdk
   with ambient credentials, a service account or a firebase folder
   (newFirebaseToolsContextAdminSdk, newFirebaseToolsContextServiceAccountMap,
   newFirebaseToolsContextFirebaseFolder) to list auth users, browse firestore
@@ -15,9 +16,9 @@ description: >-
 
 `tekartik_firebase_tools` is the package a firebase dev tool depends on: it
 re-exports the whole of `tekartik_firebase_tools_common` (emulator suite,
-`firebase` cli deploy commands, auth/firestore/storage explorer and their
-`dev_build` menus) and binds it to the admin sdk, which reaches a real project
-with full privileges.
+`firebase` cli deploy commands, auth/firestore/storage explorer, firestore
+export and their `dev_build` menus) and binds it to the admin sdk, which
+reaches a real project with full privileges.
 
 ## Guidelines
 
@@ -28,16 +29,17 @@ with full privileges.
   `package:tekartik_firebase_tools/menu.dart` for menus and
   `package:tekartik_firebase_tools/firebase_tools.dart` for scripts.
 * A complete tool is one line: `firebaseToolsMenuMain(arguments, path:
-  'deploy')` runs a `dev_build` console with the `emulator`, `project` and
-  `explore` submenus of the firebase folder at `path` (the one holding
-  `firebase.json`), the project id read from its `.firebaserc`.
+  'deploy')` runs a `dev_build` console with the `emulator`, `project`,
+  `explore` and `export` submenus of the firebase folder at `path` (the one
+  holding `firebase.json`), the project id read from its `.firebaserc`.
   `menuFirebaseToolsContent(...)` declares the same inside a
   `mainMenuConsole` of your own, next to app specific items.
 * Both take `projectId` to act on another project than the `.firebaserc`
   one, `context` to decide the credentials yourself, `emulatorOptions` /
-  `projectOptions` to configure the emulator and deploy submenus, and
-  `withEmulator` / `withProject` / `withExplorer: false` to drop a submenu.
-  Without a firebase folder, drop the emulator and project submenus or call
+  `projectOptions` / `exportOptions` to configure the emulator, deploy and
+  export submenus, and `withEmulator` / `withProject` / `withExplorer` /
+  `withExport: false` to drop a submenu. Without a firebase folder, drop the
+  emulator and project submenus or call
   `menuFirebaseExplorerContent(context:)` directly.
 * Reaching a project: `newFirebaseToolsContextAdminSdk(projectId:)` uses the
   ambient credentials (`gcloud auth application-default login`, or the
@@ -57,15 +59,22 @@ with full privileges.
   hand over the admin sdk.
 * Dev and prod are two contexts: name each menu after its project and never
   pick the project from an environment variable silently.
+* The `export` submenu is the only one that needs no context and no firebase
+  folder, just a project id: it runs `gcloud firestore export` through
+  `FirestoreExporter`, writing to `<projectId>-backup`, which it creates in
+  the location of the firestore database on first use — an export only goes
+  to a bucket in that location, which the bucket of the app usually is not.
+  `exportOptions` names another bucket or location.
 * What to do with a context (`authExplorer`, `firestoreExplorer`,
   `storageExplorer`, the path helpers, the explorer menus) is the api of the
   common package, see its `tekartik-firebase-tools-common-explorer` skill;
-  the emulator and deploy parts have theirs too.
+  the emulator, deploy and export parts have theirs too.
 * Tests run on the in-memory implementations through
   `FirebaseToolsContext.services`, no admin sdk needed; keep the admin sdk
   code in `tool/`, out of `lib/`.
-* At run time the tool needs the `firebase` cli (deploy, emulators) and
-  either `gcloud auth application-default login` or
+* At run time the tool needs the `firebase` cli (deploy, emulators), the
+  `gcloud` cli logged in (`gcloud auth login`, for the export) and either
+  `gcloud auth application-default login` or
   `GOOGLE_APPLICATION_CREDENTIALS` for the explorer.
 
 ## Examples

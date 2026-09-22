@@ -9,7 +9,9 @@ Firebase developer tools for dart, on the firebase abstractions only:
   `tekartik_firebase_build`;
 - an **explorer** for the auth users, the firestore database and the storage
   bucket of a project;
-- the **`dev_build` console menus** built on top of all three.
+- the **`gcloud firestore export`** of a project, to a cloud storage bucket,
+  and the import back;
+- the **`dev_build` console menus** built on top of all four.
 
 Nothing here picks a firebase implementation, so nothing here can reach a real
 project on its own. **[`tekartik_firebase_tools`](../firebase_tools) binds all
@@ -37,6 +39,7 @@ dependencies:
 | `package:tekartik_firebase_tools_common/firebase_emulator.dart` | `FirebaseEmulatorService`, `FirebaseEmulator`, `FirebaseEmulatorOptions` |
 | `package:tekartik_firebase_tools_common/firebase_project.dart` | `FirebaseProjectBuilder`, `FirebaseProjectOptions`, `firebaseFolderProjectId` |
 | `package:tekartik_firebase_tools_common/firebase_explorer.dart` | `FirebaseToolsContext` and the three explorers, plus the path helpers |
+| `package:tekartik_firebase_tools_common/firestore_export.dart` | `FirestoreExporter`, `FirestoreExportOptions` |
 | `package:tekartik_firebase_tools_common/menu.dart` | the `dev_build` menus |
 
 ## Exploring a project
@@ -149,12 +152,95 @@ Deploying or compiling the functions regenerates `lib/src/version.dart` first,
 in the firebase folder package and in the functions package, for those that
 have one — a bumped `pubspec.yaml` is never deployed with a stale version file.
 
+## Exporting a firestore database
+
+`FirestoreExporter` runs the `gcloud firestore export` and `gcloud firestore
+import` of one project — the managed export of the firestore admin api, a
+consistent snapshot only firestore reads back, billed one read per exported
+document. It needs the `gcloud` cli logged in, not the admin sdk.
+
+```dart
+import 'package:tekartik_firebase_tools_common/firestore_export.dart';
+
+var exporter = FirestoreExporter(
+  options: FirestoreExportOptions(projectId: 'my_project'),
+);
+// gs://my_project-backup/firestore-export/2026-09-22T10-30-00Z
+var uri = await exporter.export();
+```
+
+The bucket defaults to `<projectId>-backup` and the folder in it to
+`firestore-export`; `bucket:` and `bucketPath:` name another one. Each export
+goes in a new dated sub folder, so nothing is ever overwritten, and `export`
+returns its uri — the one `importFrom` takes back.
+
+**Firestore only exports to a bucket in the location of the database**, which
+the bucket of the app usually is not: firebase creates it wherever the project
+was set up, so a `europe-west9` database and a `us-west1` app bucket is the
+normal case, and the export is refused. Hence a bucket of its own, and
+`checkBucket()`:
+
+```dart
+// Creates gs://my_project-backup in the location of the database when it is
+// missing, and throws when an existing bucket is in the wrong one.
+await exporter.checkBucket();
+var uri = await exporter.export();
+```
+
+`databaseLocation()` and `bucketLocation()` (null when the bucket does not
+exist) report each side, `ensureBucket()` only creates, and
+`bucketLocation:` in the options overrides the location a created bucket goes
+in — a multi region (`eu`) to spread the backups of a regional database wider.
+
+### What is already in the bucket
+
+Exports are named after their date, so sorting them puts the latest last:
+
+```dart
+var names = await exporter.listExportNames(); // empty when there is none
+var name = await exporter.latestExportName(); // or just the last one
+if (name != null) {
+  var uri = exporter.exportUri(name);
+  var usage = await exporter.usageOf(uri); // file count and total size
+  print('$uri: ${usage.fileCount} file(s), '
+      '${usage.size} bytes (${storageSizeText(usage.size)})');
+}
+```
+
+`usageOf` and `sizeOf` (the total alone) work on any `gs://` uri, so the whole
+export folder (`options.uri`) is a bucket total. They walk the object listing,
+so they take as long as there are objects under the uri, and they read nothing
+from firestore — no billed read.
+
+**How many documents an export holds is not in the bucket**: an export writes
+a handful of opaque output files whatever the database holds. That count lives
+in the firestore export operation:
+
+```dart
+var operation = await exporter.exportOperation(uri);
+// null when firestore no longer lists that export
+print(operation?.documentCount); // 201
+print(operation?.state);         // SUCCESSFUL
+```
+
+Firestore only keeps its operations for a while, so an old export legitimately
+has none — report it as unknown rather than as zero.
+`listExportOperations()` gives them all.
+
+`collectionIds:` restricts an export to some collection groups, `async: true`
+returns as soon as the operation is started rather than waiting for it, and
+`FirestoreExportOptions.firebaseFolder(path:)` reads the project id from a
+`.firebaserc`. An import writes into the live database: every exported
+document overwrites the one that has its id, and what is not in the export is
+left alone — it is never a rollback.
+
 ## Menus
 
 `menuFirebaseExplorerContent` declares the auth, firestore and storage
-submenus over a context; `menuFirebaseEmulatorContent` and
-`menuFirebaseProjectBuilderContent` do the same for the emulator and the
-deploy commands. The three explorer submenus can also be declared on their own
+submenus over a context; `menuFirebaseEmulatorContent`,
+`menuFirebaseProjectBuilderContent` and `menuFirestoreExportContent` do the
+same for the emulator, the deploy commands and the export. The three explorer
+submenus can also be declared on their own
 (`menuFirebaseAuthExplorerContent`, `menuFirestoreExplorerContent`,
 `menuStorageExplorerContent`), sharing a `FirebaseExplorerMenuState` so the
 selected user and the name filter carry across them.
@@ -166,6 +252,7 @@ For the whole thing in one call, see `firebaseToolsMenuMain` in
 
 The `skills/` folder holds the agent skills of this package, one per area:
 `tekartik-firebase-tools-common-emulator`,
-`tekartik-firebase-tools-common-deploy` and
-`tekartik-firebase-tools-common-explorer`. `dart run skills@ get` installs the
+`tekartik-firebase-tools-common-deploy`,
+`tekartik-firebase-tools-common-explorer` and
+`tekartik-firebase-tools-common-export`. `dart run skills@ get` installs the
 skills of every dependency into `.agents/skills/`.

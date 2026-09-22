@@ -5,9 +5,9 @@ package to depend on.**
 
 It re-exports the whole of
 [`tekartik_firebase_tools_common`](../firebase_tools_common) — the emulator
-suite, the `firebase` cli deploy commands, the auth/firestore/storage explorer
-and their `dev_build` menus — and adds the two things that need a real firebase
-implementation:
+suite, the `firebase` cli deploy commands, the auth/firestore/storage explorer,
+the firestore export and their `dev_build` menus — and adds the two things that
+need a real firebase implementation:
 
 - **building a context that reaches a real project**, by id, by service account
   or from a firebase folder;
@@ -39,8 +39,8 @@ dependencies:
 
 ## The main menu
 
-One call gives the whole tool for a firebase folder — emulator, deploy and
-explorer submenus, with the project id read from its `.firebaserc`:
+One call gives the whole tool for a firebase folder — emulator, deploy,
+explorer and export submenus, with the project id read from its `.firebaserc`:
 
 ```dart
 import 'package:tekartik_firebase_tools/menu.dart';
@@ -51,8 +51,8 @@ Future<void> main(List<String> arguments) =>
 
 `menuFirebaseToolsContent` declares the same inside a menu you own, and takes
 the same parameters: `path`, `projectId`, a `context` of your own, and
-`withEmulator` / `withProject` / `withExplorer` to drop a submenu. See
-[`example/`](example) for both.
+`withEmulator` / `withProject` / `withExplorer` / `withExport` to drop a
+submenu. See [`example/`](example) for both.
 
 ## Reaching a project
 

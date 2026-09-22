@@ -12,3 +12,4 @@ library;
 export 'firebase_emulator.dart';
 export 'firebase_explorer.dart';
 export 'firebase_project.dart';
+export 'firestore_export.dart';
