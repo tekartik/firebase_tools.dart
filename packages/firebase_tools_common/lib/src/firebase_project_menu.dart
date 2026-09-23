@@ -51,6 +51,11 @@ void menuFirebaseProjectBuilderContent({
     await builder.deployFirestoreIndexes(controller: actionController);
   });
 
+  item('deploy hosting', () async {
+    cancel();
+    await builder.deployHosting(controller: actionController);
+  });
+
   item('deploy storage rules', () async {
     cancel();
     await builder.deployStorageRules(controller: actionController);

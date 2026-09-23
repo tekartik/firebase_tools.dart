@@ -135,7 +135,8 @@ needed: `storagePathJoin`, `storagePathRelative`, `storagePathResolve`,
 
 `FirebaseProjectBuilder` runs the `firebase` cli commands of one firebase
 folder: `deployFunctions`, `deployFirestoreRules`, `deployFirestoreIndexes`,
-`deployStorageRules`, `deploy` for everything, and `serve` for the emulators.
+`deployStorageRules`, `deployHosting`, `deploy` for everything, and `serve`
+for the emulators.
 
 ```dart
 import 'package:tekartik_firebase_tools_common/firebase_project.dart';

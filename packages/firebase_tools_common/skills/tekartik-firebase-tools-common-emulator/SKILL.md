@@ -46,7 +46,8 @@ re-exports it.
   `start` throws an `UnsupportedError`.
 * `FirebaseEmulatorOptions`: `projectId` (else read from `.firebaserc` through
   `firebase -j use`, slower), `onlyAuth` / `onlyFirestore` / `onlyStorage` /
-  `onlyFunctions` / `onlyPubsub` (combine them for `--only auth,firestore`;
+  `onlyFunctions` / `onlyPubsub` / `onlyHosting` (combine them for
+  `--only auth,firestore`;
   none means every emulator of `firebase.json`), `debug` (`--debug`),
   `persistPath` (`--import <path> --export-on-exit <path>`, keeps the data
   between runs), `processStartMode`. `copyWith` derives a variant.

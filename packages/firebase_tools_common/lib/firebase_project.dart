@@ -16,5 +16,6 @@ export 'src/firebase_project.dart'
         FirebaseProjectActionController,
         firebaseDeployCommand,
         firebaseFunctionsDeployOnly,
+        firebaseHostingDeployOnly,
         firebaseFolderProjectId,
         firebaseRcContentProjectId;

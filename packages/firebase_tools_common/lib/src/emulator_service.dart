@@ -67,6 +67,9 @@ class EmulatorServiceRunningStatus implements EmulatorServiceStatus {
   /// The port on which the Pub/Sub emulator is running, if active.
   final int? pubsubPort;
 
+  /// The port on which the Hosting emulator is running, if active.
+  final int? hostingPort;
+
   /// Creates a new [EmulatorServiceRunningStatus] with the specified emulator ports.
   EmulatorServiceRunningStatus({
     required this.firestorePort,
@@ -74,11 +77,12 @@ class EmulatorServiceRunningStatus implements EmulatorServiceStatus {
     required this.storagePort,
     required this.functionsPort,
     this.pubsubPort,
+    this.hostingPort,
   });
 
   @override
   String toString() {
-    return 'EmulatorServiceRunningStatus(firestorePort: $firestorePort, authPort: $authPort, storagePort: $storagePort, functionsPort: $functionsPort, pubsubPort: $pubsubPort)';
+    return 'EmulatorServiceRunningStatus(firestorePort: $firestorePort, authPort: $authPort, storagePort: $storagePort, functionsPort: $functionsPort, pubsubPort: $pubsubPort, hostingPort: $hostingPort)';
   }
 
   @override
@@ -174,6 +178,7 @@ class FirebaseEmulatorService {
       storagePort: runningServices['storage'],
       functionsPort: runningServices['functions'],
       pubsubPort: runningServices['pubsub'],
+      hostingPort: runningServices['hosting'],
     );
   }
 
@@ -200,6 +205,10 @@ class FirebaseEmulatorService {
     }
     if ((options.onlyPubsub ?? false) && running.pubsubPort == null) {
       stderr.writeln('Emulator is running but pubsub is not running');
+      return false;
+    }
+    if ((options.onlyHosting ?? false) && running.hostingPort == null) {
+      stderr.writeln('Emulator is running but hosting is not running');
       return false;
     }
     return true;
@@ -406,9 +415,15 @@ class FirebaseEmulatorService {
     var onlyFirestore = options.onlyFirestore ?? false;
     var onlyStorage = options.onlyStorage ?? false;
     var onlyPubsub = options.onlyPubsub ?? false;
+    var onlyHosting = options.onlyHosting ?? false;
 
     var only =
-        onlyFunctions || onlyAuth || onlyFirestore || onlyStorage || onlyPubsub;
+        onlyFunctions ||
+        onlyAuth ||
+        onlyFirestore ||
+        onlyStorage ||
+        onlyPubsub ||
+        onlyHosting;
 
     var persistPath = options.persistPath;
     try {
@@ -417,7 +432,7 @@ class FirebaseEmulatorService {
         ' --project $projectId'
         '${(options.debug ?? false) ? ' --debug' : ''}'
         ' emulators:start'
-        '${only ? ' --only ${[if (onlyFunctions) 'functions', if (onlyAuth) 'auth', if (onlyFirestore) 'firestore', if (onlyStorage) 'storage', if (onlyPubsub) 'pubsub'].join(',')}' : ''}'
+        '${only ? ' --only ${[if (onlyFunctions) 'functions', if (onlyAuth) 'auth', if (onlyFirestore) 'firestore', if (onlyStorage) 'storage', if (onlyPubsub) 'pubsub', if (onlyHosting) 'hosting'].join(',')}' : ''}'
         '${persistPath != null ? ' --import $persistPath --export-on-exit $persistPath' : ''}',
       );
 

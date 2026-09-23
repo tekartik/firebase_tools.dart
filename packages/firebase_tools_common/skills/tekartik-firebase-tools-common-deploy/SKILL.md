@@ -36,7 +36,9 @@ name. It is the firebase part of `tekartik_firebase_build` (the
   (`commanddartv2dev` next to `commanddartv2prod`).
 * Deploy methods: `deployFunctions`, `deployFirestoreRules`,
   `deployFirestoreIndexes`, `deployFirestore` (rules and indexes),
-  `deployStorageRules`, `deployOnly('hosting,firestore:rules')` and `deploy()`
+  `deployStorageRules`, `deployHosting(targets: ['dev'])` (every site when
+  no target, the `public` folders as they are),
+  `deployOnly('hosting,firestore:rules')` and `deploy()`
   (everything of `firebase.json`). Each takes `force: true` to add `--force`,
   which deletes the functions or indexes no longer in the source and skips
   the runtime upgrade prompts without asking: use it in non-interactive

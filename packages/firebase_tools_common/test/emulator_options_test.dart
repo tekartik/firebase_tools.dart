@@ -15,6 +15,7 @@ void main() {
       expect(options.onlyFirestore, isNull);
       expect(options.onlyStorage, isNull);
       expect(options.onlyFunctions, isNull);
+      expect(options.onlyHosting, isNull);
       expect(options.debug, isNull);
       expect(options.persistPath, isNull);
       expect(options.processStartMode, isNull);
@@ -34,6 +35,8 @@ void main() {
       expect(copy.persistPath, '.local/emulator');
       expect(copy.processStartMode, ProcessStartMode.inheritStdio);
       expect(copy.onlyStorage, isNull);
+      expect(copy.onlyHosting, isNull);
+      expect(copy.copyWith(onlyHosting: true).onlyHosting, isTrue);
     });
 
     test('toString names every field', () {

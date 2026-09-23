@@ -201,6 +201,21 @@ String firebaseFunctionsDeployOnly(List<String>? functions) {
       .join(',');
 }
 
+/// The `--only` filter deploying the hosting [targets].
+///
+/// `hosting` when [targets] is null or empty (every hosting site of the
+/// project), `hosting:a,hosting:b` otherwise. A name already prefixed with
+/// `hosting:` is left alone. The targets are the ones of `firebase.json`,
+/// bound to their hosting site in `.firebaserc`.
+String firebaseHostingDeployOnly(List<String>? targets) {
+  if (targets == null || targets.isEmpty) {
+    return 'hosting';
+  }
+  return targets
+      .map((name) => name.startsWith('hosting:') ? name : 'hosting:$name')
+      .join(',');
+}
+
 /// The `firebase deploy` command line for [projectId], restricted to [only]
 /// (a raw comma-separated target list, e.g. `'functions:a,firestore:rules'`)
 /// when given, with `--force` when [force] is true.
@@ -291,6 +306,20 @@ class FirebaseProjectBuilder implements CommonAppBuilder {
     FirebaseProjectActionController? controller,
     bool? force,
   }) => _deploy('firestore', controller, force: force);
+
+  /// Deploys Firebase Hosting via `firebase deploy --only hosting[:target,...]`
+  /// (see [firebaseHostingDeployOnly]): every hosting site of `firebase.json`,
+  /// or only [targets].
+  ///
+  /// Their `public` folders are sent as they are: build and copy the web apps
+  /// there first. If [controller] is given, it's wired to the underlying
+  /// shell so [FirebaseProjectActionController.cancel] can abort the deploy.
+  /// [force] adds `--force`, see [firebaseDeployCommand].
+  Future<void> deployHosting({
+    List<String>? targets,
+    FirebaseProjectActionController? controller,
+    bool? force,
+  }) => _deploy(firebaseHostingDeployOnly(targets), controller, force: force);
 
   /// Deploys Storage security rules via `firebase deploy --only storage`.
   /// If [controller] is given, it's wired to the underlying shell so

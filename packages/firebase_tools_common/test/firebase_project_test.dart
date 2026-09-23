@@ -74,6 +74,21 @@ void main() {
     });
   });
 
+  group('firebaseHostingDeployOnly', () {
+    test('null or empty deploys every site', () {
+      expect(firebaseHostingDeployOnly(null), 'hosting');
+      expect(firebaseHostingDeployOnly([]), 'hosting');
+    });
+
+    test('prefixes each target, leaves a prefixed one alone', () {
+      expect(firebaseHostingDeployOnly(['dev']), 'hosting:dev');
+      expect(
+        firebaseHostingDeployOnly(['hosting:dev', 'prod']),
+        'hosting:dev,hosting:prod',
+      );
+    });
+  });
+
   group('firebaseDeployCommand', () {
     test('deploys everything by default', () {
       expect(

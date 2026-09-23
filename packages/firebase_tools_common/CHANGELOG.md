@@ -1,3 +1,11 @@
+## 0.1.5
+
+- `FirebaseProjectBuilder.deployHosting` (`firebaseHostingDeployOnly`): the
+  hosting sites of a firebase folder, or only some targets; a `deploy hosting`
+  menu item.
+- `FirebaseEmulatorOptions.onlyHosting` (`--only ...,hosting`), and the
+  hosting port in `EmulatorServiceRunningStatus`.
+
 ## 0.1.4
 
 - `FirestoreExporter` / `FirestoreExportOptions`: the `gcloud firestore
