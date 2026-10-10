@@ -1,3 +1,13 @@
+## 0.1.6
+
+- `firebase_manager.dart` (web compatible) and `firebase_manager_io.dart`:
+  `FirebaseManagerClient` on the Google REST APIs, the projects of the
+  account, their hosting sites, configuration (`maxVersions`, the number of
+  versions kept) and versions, the hosting storage usage from Cloud
+  Monitoring, `firebaseHostingProjectsMaxVersions` to view, set or limit the
+  versions kept of many projects at once. Access tokens from the Firebase CLI
+  login (its OAuth client supplied by the caller), gcloud or any function.
+
 ## 0.1.5
 
 - `FirebaseProjectBuilder.deployHosting` (`firebaseHostingDeployOnly`): the

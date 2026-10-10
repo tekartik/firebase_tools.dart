@@ -1,6 +1,7 @@
 /// Firebase developer tools, on the firebase abstractions only: the emulator
-/// suite, the `firebase` cli deploy commands, and an explorer for the auth
-/// users, the firestore database and the storage bucket of a project.
+/// suite, the `firebase` cli deploy commands, an explorer for the auth
+/// users, the firestore database and the storage bucket of a project, and the
+/// REST management of the projects (hosting sites configuration and usage).
 ///
 /// Nothing here picks a firebase implementation. `tekartik_firebase_tools`
 /// binds all of it to the admin sdk and adds the main dev menu.
@@ -11,5 +12,6 @@ library;
 
 export 'firebase_emulator.dart';
 export 'firebase_explorer.dart';
+export 'firebase_manager_io.dart';
 export 'firebase_project.dart';
 export 'firestore_export.dart';

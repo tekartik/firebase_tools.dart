@@ -11,7 +11,10 @@ Firebase developer tools for dart, on the firebase abstractions only:
   bucket of a project;
 - the **`gcloud firestore export`** of a project, to a cloud storage bucket,
   and the import back;
-- the **`dev_build` console menus** built on top of all four.
+- a **REST manager** of the projects of an account: the hosting sites, the
+  number of versions they keep, their versions and storage usage — works on
+  the web too;
+- the **`dev_build` console menus** built on top of the first four.
 
 Nothing here picks a firebase implementation, so nothing here can reach a real
 project on its own. **[`tekartik_firebase_tools`](../firebase_tools) binds all
@@ -40,6 +43,8 @@ dependencies:
 | `package:tekartik_firebase_tools_common/firebase_project.dart` | `FirebaseProjectBuilder`, `FirebaseProjectOptions`, `firebaseFolderProjectId` |
 | `package:tekartik_firebase_tools_common/firebase_explorer.dart` | `FirebaseToolsContext` and the three explorers, plus the path helpers |
 | `package:tekartik_firebase_tools_common/firestore_export.dart` | `FirestoreExporter`, `FirestoreExportOptions` |
+| `package:tekartik_firebase_tools_common/firebase_manager.dart` | `FirebaseManagerClient`, its hosting and usage extensions, `GoogleAccessTokenProvider` (web compatible) |
+| `package:tekartik_firebase_tools_common/firebase_manager_io.dart` | the same plus the Firebase CLI login and gcloud token providers |
 | `package:tekartik_firebase_tools_common/menu.dart` | the `dev_build` menus |
 
 ## Exploring a project
@@ -235,6 +240,48 @@ returns as soon as the operation is started rather than waiting for it, and
 document overwrites the one that has its id, and what is not in the export is
 left alone — it is never a rollback.
 
+## Managing projects (REST)
+
+`FirebaseManagerClient` calls the Google REST APIs with an access token:
+Firebase Management (projects), Firebase Hosting (sites, configuration,
+versions) and Cloud Monitoring (usage). No credentials are bundled, the token
+comes from a `GoogleAccessTokenProvider`:
+
+- `FirebaseCliAccessTokenProvider` (io): the account of `firebase login`. Its
+  refresh token can only be refreshed by the OAuth client of the Firebase CLI,
+  which you supply (`clientId`/`clientSecret` or `FIREBASE_CLIENT_ID`/
+  `FIREBASE_CLIENT_SECRET`);
+- `GcloudAccessTokenProvider` (io): `gcloud auth print-access-token`, or the
+  application default credentials (their quota project is sent as
+  `x-goog-user-project`);
+- `GoogleAccessTokenProvider.function`: any other source, a web sign-in for
+  instance.
+
+```dart
+import 'package:tekartik_firebase_tools_common/firebase_manager_io.dart';
+
+var client = FirebaseManagerClient(
+  tokenProvider: GcloudAccessTokenProvider(),
+);
+for (var project in await client.listProjects()) {
+  for (var site in await client.listHostingSites(project.projectId)) {
+    var config = await client.getHostingSiteConfig(site);
+    print('$site ${firebaseHostingMaxVersionsText(config.maxVersions)}');
+  }
+}
+client.close();
+```
+
+The release storage setting of the console ("number of previous releases to
+keep") is the site `maxVersions`: unlimited by default, the oldest versions
+past it are deleted on the next deploy. `setHostingSiteMaxVersions` changes
+it, `firebaseHostingProjectsMaxVersions` reads or updates every site of many
+projects at once (`limit: true` only lowers the unlimited or greater values,
+`dryRun: true` writes nothing). `listHostingVersions` and
+`FirebaseHostingVersionsSummary` give the versions kept and their size,
+`getHostingUsage` the storage measured by Cloud Monitoring (a few times a
+day) per site.
+
 ## Menus
 
 `menuFirebaseExplorerContent` declares the auth, firestore and storage
@@ -254,6 +301,7 @@ For the whole thing in one call, see `firebaseToolsMenuMain` in
 The `skills/` folder holds the agent skills of this package, one per area:
 `tekartik-firebase-tools-common-emulator`,
 `tekartik-firebase-tools-common-deploy`,
-`tekartik-firebase-tools-common-explorer` and
-`tekartik-firebase-tools-common-export`. `dart run skills@ get` installs the
+`tekartik-firebase-tools-common-explorer`,
+`tekartik-firebase-tools-common-export` and
+`tekartik-firebase-tools-common-manager`. `dart run skills@ get` installs the
 skills of every dependency into `.agents/skills/`.
