@@ -123,6 +123,7 @@ class FirebaseEmulatorService {
   static final _minFirebaseAdminVersion = Version(13, 8, 0);
   static final _minFirebaseFunctionsVersion = Version(7, 2, 5);
   static final _minFirebaseCliVersion = Version(15, 14, 0);
+  static const _minNodeVersion = 20;
 
   var _lastStatusOk = false;
 
@@ -291,8 +292,10 @@ class FirebaseEmulatorService {
       var nodeVersion = parseInt(
         mapValueFromParts<Object>(map, ['engines', 'node']),
       );
-      if (nodeVersion != null && nodeVersion < 20) {
-        throw StateError('engines.node = 22+ expected');
+      if (nodeVersion != null && nodeVersion < _minNodeVersion) {
+        throw StateError(
+          'engines.node = $_minNodeVersion+ expected, found $nodeVersion',
+        );
       }
       var firebaseAdminBoundaries = mapValueFromParts<String>(map, [
         'dependencies',
@@ -410,33 +413,16 @@ class FirebaseEmulatorService {
       }
     });
 
-    var onlyFunctions = options.onlyFunctions ?? false;
-    var onlyAuth = options.onlyAuth ?? false;
-    var onlyFirestore = options.onlyFirestore ?? false;
-    var onlyStorage = options.onlyStorage ?? false;
-    var onlyPubsub = options.onlyPubsub ?? false;
-    var onlyHosting = options.onlyHosting ?? false;
-
-    var only =
-        onlyFunctions ||
-        onlyAuth ||
-        onlyFirestore ||
-        onlyStorage ||
-        onlyPubsub ||
-        onlyHosting;
-
-    var persistPath = options.persistPath;
     try {
       var done = shell.run(
-        'firebase'
-        ' --project $projectId'
-        '${(options.debug ?? false) ? ' --debug' : ''}'
-        ' emulators:start'
-        '${only ? ' --only ${[if (onlyFunctions) 'functions', if (onlyAuth) 'auth', if (onlyFirestore) 'firestore', if (onlyStorage) 'storage', if (onlyPubsub) 'pubsub', if (onlyHosting) 'hosting'].join(',')}' : ''}'
-        '${persistPath != null ? ' --import $persistPath --export-on-exit $persistPath' : ''}',
+        firebaseEmulatorStartCommand(projectId: projectId, options: options),
       );
 
-      await completer.future.timeout(timeout);
+      await firebaseEmulatorWaitReady(
+        ready: completer.future,
+        done: done,
+        timeout: timeout,
+      );
 
       return await createEmulator(
         path: path,
@@ -451,4 +437,67 @@ class FirebaseEmulatorService {
       rethrow;
     }
   }
+}
+
+/// The `firebase emulators:start` command line for [projectId] and [options].
+///
+/// An empty [FirebaseEmulatorOptions.persistPath] means no persistence, like a
+/// null one, and the path is passed as a single argument even when it holds
+/// spaces.
+String firebaseEmulatorStartCommand({
+  required String projectId,
+  required FirebaseEmulatorOptions options,
+}) {
+  var only = [
+    if (options.onlyFunctions ?? false) 'functions',
+    if (options.onlyAuth ?? false) 'auth',
+    if (options.onlyFirestore ?? false) 'firestore',
+    if (options.onlyStorage ?? false) 'storage',
+    if (options.onlyPubsub ?? false) 'pubsub',
+    if (options.onlyHosting ?? false) 'hosting',
+  ];
+  var persistPath = options.persistPath;
+  var persist = persistPath?.isNotEmpty ?? false;
+  return [
+    'firebase',
+    '--project',
+    shellArgument(projectId),
+    if (options.debug ?? false) '--debug',
+    'emulators:start',
+    if (only.isNotEmpty) ...['--only', only.join(',')],
+    if (persist) ...[
+      '--import',
+      shellArgument(persistPath!),
+      '--export-on-exit',
+      shellArgument(persistPath),
+    ],
+  ].join(' ');
+}
+
+/// Waits for [ready], i.e. the emulators telling they are all ready, at most
+/// [timeout].
+///
+/// [done] is the emulator process: when it ends first (a wrong project, a port
+/// already taken...), the wait fails at once with its error, or with a
+/// [StateError] when it exited normally, instead of leaving that error
+/// uncaught and waiting for [timeout].
+Future<void> firebaseEmulatorWaitReady({
+  required Future<Object?> ready,
+  required Future<Object?> done,
+  required Duration timeout,
+}) {
+  var completer = Completer<void>();
+  ready.then(
+    (_) => completer.safeComplete(),
+    onError: (Object error, StackTrace stackTrace) =>
+        completer.safeCompleteError(error, stackTrace),
+  );
+  done.then(
+    (_) => completer.safeCompleteError(
+      StateError('firebase emulators:start exited before being ready'),
+    ),
+    onError: (Object error, StackTrace stackTrace) =>
+        completer.safeCompleteError(error, stackTrace),
+  );
+  return completer.future.timeout(timeout);
 }

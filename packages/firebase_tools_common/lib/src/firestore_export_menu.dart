@@ -1,13 +1,7 @@
 import 'package:dev_build/menu/menu.dart';
 
 import 'firestore_export.dart';
-
-/// The `prompt` answer [value], trimmed, or `null` when it was left empty —
-/// which every item takes as a cancellation.
-String? _promptValue(String value) {
-  var trimmed = value.trim();
-  return trimmed.isEmpty ? null : trimmed;
-}
+import 'menu_prompt.dart';
 
 /// The collection ids of the comma separated [value].
 List<String> _collectionIds(String value) => value
@@ -67,9 +61,8 @@ void menuFirestoreExportContent({required FirestoreExporter exporter}) {
   });
 
   item('export collections', () async {
-    var value = _promptValue(await prompt('collection ids, comma separated'));
+    var value = await menuPromptOrCancel('collection ids, comma separated');
     if (value == null) {
-      write('cancelled');
       return;
     }
     await exportTo(collectionIds: _collectionIds(value));
@@ -119,7 +112,7 @@ void menuFirestoreExportContent({required FirestoreExporter exporter}) {
 
   item('import', () async {
     var uri =
-        _promptValue(
+        menuPromptValue(
           await prompt(
             'export uri (gs://…)${lastUri == null ? '' : ', empty for $lastUri'}',
           ),
@@ -129,7 +122,7 @@ void menuFirestoreExportContent({required FirestoreExporter exporter}) {
       write('cancelled');
       return;
     }
-    var answer = _promptValue(
+    var answer = menuPromptValue(
       await prompt(
         'import $uri into ${options.projectId}? '
         'every exported document overwrites the live one. '

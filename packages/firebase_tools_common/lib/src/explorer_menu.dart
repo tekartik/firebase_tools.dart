@@ -1,13 +1,15 @@
 import 'package:cv/cv_json.dart';
 import 'package:dev_build/menu/menu.dart';
 import 'package:tekartik_firebase_auth/auth.dart';
+import 'package:tekartik_firebase_storage/storage.dart' show FileMetadata;
 
 import 'auth_explorer.dart';
 import 'firebase_context.dart';
 import 'firestore_explorer.dart';
 import 'firestore_path.dart';
+import 'menu_prompt.dart';
 import 'storage_explorer.dart';
-import 'storage_path.dart';
+import 'storage_menu_file.dart';
 
 /// Remembers what the menu items act on between two of them, so a user is found
 /// once and every following item applies to it.
@@ -31,13 +33,6 @@ class FirebaseExplorerMenuState {
   }
 }
 
-/// The `prompt` answer [value], trimmed, or `null` when it was left empty —
-/// which every item takes as a cancellation.
-String? _promptValue(String value) {
-  var trimmed = value.trim();
-  return trimmed.isEmpty ? null : trimmed;
-}
-
 /// Registers the whole explorer menu of [context]: its auth users, its
 /// firestore database and its storage bucket, each in its own submenu.
 ///
@@ -54,9 +49,8 @@ void menuFirebaseExplorerContent({required FirebaseToolsContext context}) {
   });
 
   item('limit', () async {
-    var value = _promptValue(await prompt('max entries (${state.limit})'));
+    var value = await menuPromptOrCancel('max entries (${state.limit})');
     if (value == null) {
-      write('cancelled');
       return;
     }
     var limit = int.tryParse(value);
@@ -117,9 +111,8 @@ void menuFirebaseAuthExplorerContent({
   });
 
   item('find user by email', () async {
-    var email = _promptValue(await prompt('email'));
+    var email = await menuPromptOrCancel('email');
     if (email == null) {
-      write('cancelled');
       return;
     }
     var explorer = await context.authExplorer;
@@ -132,9 +125,8 @@ void menuFirebaseAuthExplorerContent({
   });
 
   item('find user by uid', () async {
-    var uid = _promptValue(await prompt('uid'));
+    var uid = await menuPromptOrCancel('uid');
     if (uid == null) {
-      write('cancelled');
       return;
     }
     var explorer = await context.authExplorer;
@@ -159,14 +151,12 @@ void menuFirebaseAuthExplorerContent({
   });
 
   item('create user (email/password)', () async {
-    var email = _promptValue(await prompt('email'));
+    var email = await menuPromptOrCancel('email');
     if (email == null) {
-      write('cancelled');
       return;
     }
-    var password = _promptValue(await prompt('password'));
+    var password = await menuPromptOrCancel('password');
     if (password == null) {
-      write('cancelled');
       return;
     }
     var explorer = await context.authExplorer;
@@ -184,7 +174,7 @@ void menuFirebaseAuthExplorerContent({
       write('no user selected');
       return;
     }
-    var answer = _promptValue(
+    var answer = menuPromptValue(
       await prompt('delete ${firebaseUserText(user)}? type the uid to confirm'),
     );
     if (answer != user.uid) {
@@ -251,11 +241,10 @@ void menuFirestoreExplorerContent({
   });
 
   item('enter path', () async {
-    var path = _promptValue(
-      await prompt('path (absolute with a leading /, .. to go up)'),
+    var path = await menuPromptOrCancel(
+      'path (absolute with a leading /, .. to go up)',
     );
     if (path == null) {
-      write('cancelled');
       return;
     }
     var explorer = await context.firestoreExplorer;
@@ -326,7 +315,7 @@ void menuFirestoreExplorerContent({
       write('/$path is not a document, enter one first');
       return;
     }
-    var answer = _promptValue(
+    var answer = menuPromptValue(
       await prompt('delete /$path? type the document id to confirm'),
     );
     if (answer != firestorePathId(path)) {
@@ -358,6 +347,13 @@ void menuStorageExplorerContent({
     }
     var size = entry.size;
     write('$name${size == null ? '' : ' ($size bytes)'}');
+  }
+
+  /// Writes what [metadata] tells about a file.
+  void writeMetadata(FileMetadata metadata) {
+    write('size: ${metadata.size}');
+    write('content type: ${metadata.contentType ?? '<unknown>'}');
+    write('updated: ${metadata.dateUpdated}');
   }
 
   Future<void> writeListing(StorageExplorer explorer) async {
@@ -393,7 +389,7 @@ void menuStorageExplorerContent({
     var filter = await prompt(
       'name filter (empty to clear, `*` and `?` for a glob)',
     );
-    menuState.storageFilter = _promptValue(filter);
+    menuState.storageFilter = menuPromptValue(filter);
     write('filter is now ${menuState.storageFilter ?? '<none>'}');
   });
 
@@ -436,11 +432,10 @@ void menuStorageExplorerContent({
   });
 
   item('enter path', () async {
-    var path = _promptValue(
-      await prompt('path (absolute with a leading /, .. to go up)'),
+    var path = await menuPromptOrCancel(
+      'path (absolute with a leading /, .. to go up)',
     );
     if (path == null) {
-      write('cancelled');
       return;
     }
     var explorer = await context.storageExplorer;
@@ -465,12 +460,11 @@ void menuStorageExplorerContent({
             write('/${explorer.cd(entry.name)}');
             await writeListing(explorer);
           } else {
-            write(entry.path);
-            var metadata = await explorer.metadata(entry.path);
+            var file = StorageMenuFile.entry(explorer, entry);
+            write(file.fullPath);
+            var metadata = await file.metadata();
             if (metadata != null) {
-              write('size: ${metadata.size}');
-              write('content type: ${metadata.contentType ?? '<unknown>'}');
-              write('updated: ${metadata.dateUpdated}');
+              writeMetadata(metadata);
             }
           }
           await popMenu();
@@ -496,61 +490,53 @@ void menuStorageExplorerContent({
   });
 
   item('show file metadata', () async {
-    var path = _promptValue(await prompt('file path'));
+    var path = await menuPromptOrCancel('file path');
     if (path == null) {
-      write('cancelled');
       return;
     }
-    var explorer = await context.storageExplorer;
-    var fullPath = explorer.fullPath(path);
-    var metadata = await explorer.metadata(fullPath);
+    var file = StorageMenuFile(await context.storageExplorer, path);
+    var metadata = await file.metadata();
     if (metadata == null) {
-      write('no file at $fullPath');
+      write('no file at ${file.fullPath}');
       return;
     }
-    write(fullPath);
-    write('relative: ${explorer.relativePath(fullPath)}');
-    write('size: ${metadata.size}');
-    write('content type: ${metadata.contentType ?? '<unknown>'}');
-    write('updated: ${metadata.dateUpdated}');
+    write(file.fullPath);
+    write('relative: ${file.relativePath}');
+    writeMetadata(metadata);
     write('md5: ${metadata.md5Hash}');
   });
 
   item('read file as text', () async {
-    var path = _promptValue(await prompt('file path'));
+    var path = await menuPromptOrCancel('file path');
     if (path == null) {
-      write('cancelled');
       return;
     }
-    var explorer = await context.storageExplorer;
-    var fullPath = explorer.fullPath(path);
-    if (!await explorer.exists(fullPath)) {
-      write('no file at $fullPath');
+    var file = StorageMenuFile(await context.storageExplorer, path);
+    if (!await file.exists()) {
+      write('no file at ${file.fullPath}');
       return;
     }
-    write(await explorer.readAsString(fullPath));
+    write(await file.readAsString());
   });
 
   item('delete file', () async {
-    var path = _promptValue(await prompt('file path'));
+    var path = await menuPromptOrCancel('file path');
     if (path == null) {
-      write('cancelled');
       return;
     }
-    var explorer = await context.storageExplorer;
-    var fullPath = explorer.fullPath(path);
-    if (!await explorer.exists(fullPath)) {
-      write('no file at $fullPath');
+    var file = StorageMenuFile(await context.storageExplorer, path);
+    if (!await file.exists()) {
+      write('no file at ${file.fullPath}');
       return;
     }
-    var answer = _promptValue(
-      await prompt('delete $fullPath? type the file name to confirm'),
+    var answer = menuPromptValue(
+      await prompt('delete ${file.fullPath}? type the file name to confirm'),
     );
-    if (answer != storagePathName(fullPath)) {
+    if (answer != file.name) {
       write('cancelled');
       return;
     }
-    await explorer.delete(fullPath);
-    write('deleted $fullPath');
+    await file.delete();
+    write('deleted ${file.fullPath}');
   });
 }

@@ -5,45 +5,36 @@
 /// being the bucket root.
 library;
 
+import 'slash_path.dart';
+
 /// The non-empty segments of the storage path [path].
 ///
 /// Leading, trailing and repeated `/` are ignored, so `'/a//b/'` and `'a/b'`
 /// both give `['a', 'b']`.
-List<String> storagePathParts(String path) =>
-    path.split('/').where((part) => part.isNotEmpty).toList();
+List<String> storagePathParts(String path) => slashPathParts(path);
 
 /// The canonical form of [path]: its segments joined by a single `/`, with no
 /// leading or trailing slash.
 ///
 /// The bucket root is the empty string.
-String storagePathNormalize(String path) => storagePathParts(path).join('/');
+String storagePathNormalize(String path) => slashPathNormalize(path);
 
 /// [path] with [child] appended, both normalized.
 ///
 /// [child] may hold several `/` separated segments. Joining onto the root
 /// (`''`) simply returns the normalized [child].
-String storagePathJoin(String path, String child) =>
-    [...storagePathParts(path), ...storagePathParts(child)].join('/');
+String storagePathJoin(String path, String child) => slashPathJoin(path, child);
 
 /// The last segment of [path], i.e. the file or directory name.
 ///
 /// Returns an empty string for the root.
-String storagePathName(String path) {
-  var parts = storagePathParts(path);
-  return parts.isEmpty ? '' : parts.last;
-}
+String storagePathName(String path) => slashPathLast(path);
 
 /// The directory holding [path], i.e. [path] without its last segment.
 ///
 /// Returns `null` for the root, which has no parent, and the empty string (the
 /// root) for a top level entry.
-String? storagePathParent(String path) {
-  var parts = storagePathParts(path);
-  if (parts.isEmpty) {
-    return null;
-  }
-  return parts.sublist(0, parts.length - 1).join('/');
-}
+String? storagePathParent(String path) => slashPathParent(path);
 
 /// The prefix to pass to a listing call to restrict it to the directory [path],
 /// i.e. [path] with a trailing `/`.
@@ -87,22 +78,8 @@ String storagePathRelative(String path, {required String from}) {
 /// `.` segment stays put.
 ///
 /// Returns the normalized resulting path.
-String storagePathResolve(String current, String target) {
-  var parts = target.startsWith('/') ? <String>[] : storagePathParts(current);
-  for (var part in storagePathParts(target)) {
-    if (part == '.') {
-      continue;
-    }
-    if (part == '..') {
-      if (parts.isNotEmpty) {
-        parts.removeLast();
-      }
-      continue;
-    }
-    parts.add(part);
-  }
-  return parts.join('/');
-}
+String storagePathResolve(String current, String target) =>
+    slashPathResolve(current, target);
 
 /// Whether [name] passes the name filter [filter].
 ///

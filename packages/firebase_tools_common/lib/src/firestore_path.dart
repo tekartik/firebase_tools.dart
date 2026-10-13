@@ -1,3 +1,5 @@
+import 'slash_path.dart';
+
 /// What a firestore path points to.
 ///
 /// Firestore paths alternate collection and document segments, so the kind is
@@ -21,15 +23,13 @@ enum FirestorePathKind {
 /// ignored: `'/a//b/'` and `'a/b'` both give `['a', 'b']`.
 ///
 /// Returns an empty list for the root path.
-List<String> firestorePathParts(String path) =>
-    path.split('/').where((part) => part.isNotEmpty).toList();
+List<String> firestorePathParts(String path) => slashPathParts(path);
 
 /// The canonical form of the firestore path [path], i.e. its segments joined
 /// by a single `/`, with no leading or trailing slash.
 ///
 /// The root path is the empty string.
-String firestorePathNormalize(String path) =>
-    firestorePathParts(path).join('/');
+String firestorePathNormalize(String path) => slashPathNormalize(path);
 
 /// What [path] points to, see [FirestorePathKind].
 ///
@@ -59,29 +59,20 @@ bool firestorePathIsRoot(String path) =>
 /// The last segment of [path], i.e. the document or collection id.
 ///
 /// Returns an empty string for the root path.
-String firestorePathId(String path) {
-  var parts = firestorePathParts(path);
-  return parts.isEmpty ? '' : parts.last;
-}
+String firestorePathId(String path) => slashPathLast(path);
 
 /// The path of the parent of [path], one segment up.
 ///
 /// Returns `null` for the root path, which has no parent, and the empty string
 /// (the root) for a root collection.
-String? firestorePathParent(String path) {
-  var parts = firestorePathParts(path);
-  if (parts.isEmpty) {
-    return null;
-  }
-  return parts.sublist(0, parts.length - 1).join('/');
-}
+String? firestorePathParent(String path) => slashPathParent(path);
 
 /// [path] with [segment] appended.
 ///
 /// [segment] may itself hold several `/` separated parts. Both sides are
 /// normalized, so `firestorePathJoin('/a/', '/b/c/')` is `'a/b/c'`.
 String firestorePathJoin(String path, String segment) =>
-    [...firestorePathParts(path), ...firestorePathParts(segment)].join('/');
+    slashPathJoin(path, segment);
 
 /// Resolves [target] against the current path [current], the way `cd` does.
 ///
@@ -90,19 +81,5 @@ String firestorePathJoin(String path, String segment) =>
 /// a `.` segment stays put.
 ///
 /// Returns the normalized resulting path.
-String firestorePathResolve(String current, String target) {
-  var parts = target.startsWith('/') ? <String>[] : firestorePathParts(current);
-  for (var part in firestorePathParts(target)) {
-    if (part == '.') {
-      continue;
-    }
-    if (part == '..') {
-      if (parts.isNotEmpty) {
-        parts.removeLast();
-      }
-      continue;
-    }
-    parts.add(part);
-  }
-  return parts.join('/');
-}
+String firestorePathResolve(String current, String target) =>
+    slashPathResolve(current, target);
