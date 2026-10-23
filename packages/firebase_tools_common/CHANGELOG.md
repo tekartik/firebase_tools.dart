@@ -1,3 +1,10 @@
+## 0.1.8
+
+- `FirebaseEmulator.stop` waits for the firebase cli to exit (killed after
+  30s): it returned once the interrupt was sent, while the emulators were
+  still shutting down, and a start right after took them as running then
+  failed talking to them (connection refused).
+
 ## 0.1.7
 
 - `FirebaseProjectBuilder.ffBumpVersion`: bumps the patch of the functions

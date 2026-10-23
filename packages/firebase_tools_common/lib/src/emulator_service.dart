@@ -413,9 +413,12 @@ class FirebaseEmulatorService {
       }
     });
 
+    // The firebase cli process, stop waits for its exit.
+    var processCompleter = Completer<Process>();
     try {
       var done = shell.run(
         firebaseEmulatorStartCommand(projectId: projectId, options: options),
+        onProcess: (process) => processCompleter.safeComplete(process),
       );
 
       await firebaseEmulatorWaitReady(
@@ -430,6 +433,7 @@ class FirebaseEmulatorService {
         shell: shell,
         done: done,
         projectId: projectId,
+        process: processCompleter.future,
       );
     } catch (e) {
       completer.safeCompleteError(e);
