@@ -1,3 +1,9 @@
+## 0.1.7
+
+- `FirebaseProjectBuilder.ffBumpVersion`: bumps the patch of the functions
+  package and regenerates its `lib/src/version.dart`; a `bump functions
+  version` menu item.
+
 ## 0.1.6
 
 - `firebase_manager.dart` (web compatible) and `firebase_manager_io.dart`:

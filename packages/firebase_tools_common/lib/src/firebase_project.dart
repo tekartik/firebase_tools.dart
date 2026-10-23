@@ -352,6 +352,21 @@ class FirebaseProjectBuilder implements CommonAppBuilder {
     }
   }
 
+  /// Bumps the version of the functions package at
+  /// [FirebaseProjectOptions.functionsSourcePath] (its `pubspec.yaml`: the
+  /// patch, `0.0.1` to `0.0.2`, no build number on a server) and regenerates
+  /// its `lib/src/version.dart` if it has one, the version the deployed
+  /// functions report.
+  ///
+  /// To run before [deployFunctions]. The dev and prod functions of a project
+  /// usually share one functions package, hence one version.
+  Future<void> ffBumpVersion() async {
+    await version_io.pathAppVersionBumpAndGenerate(
+      path: options.functionsSourcePath,
+      patch: true,
+    );
+  }
+
   /// Deploys Cloud Functions via `firebase deploy --only functions[:name,...]`,
   /// after regenerating the version files ([generateFunctionsVersionIfNeeded]).
   ///

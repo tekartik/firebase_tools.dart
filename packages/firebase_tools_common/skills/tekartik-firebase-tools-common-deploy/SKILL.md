@@ -67,7 +67,10 @@ name. It is the firebase part of `tekartik_firebase_build` (the
   their `pubspec.yaml` version when they exist and left alone otherwise. Opt
   a package in by generating the file once (`generateVersion(path:, force:
   true)` of `package:tekartik_common_build/version_io.dart`) and committing
-  it.
+  it. `ffBumpVersion()` bumps the patch of the functions package
+  (`functionsSourcePath`, not the firebase folder) and regenerates its version
+  file: run it before a deploy so the deployed functions report a new
+  version.
 * `serve(only: 'functions,firestore')` runs `firebase emulators:start` in
   the folder and returns when it exits; prefer `FirebaseEmulatorService`
   (see the emulator skill) when the script needs to know when the emulators
@@ -78,8 +81,9 @@ name. It is the firebase part of `tekartik_firebase_build` (the
   `firebaseRcContentProjectId(json)`.
 * In a `dev_build` menu, `menuFirebaseProjectBuilderContent(builder:)`
   (`package:tekartik_firebase_tools_common/menu.dart`) declares `serve
-  emulators`, `deploy functions`, `deploy firestore rules`, `deploy firestore
-  indexes`, `deploy storage rules`, `deploy all` and `cancel action`;
+  emulators`, `bump functions version`, `deploy functions`, `deploy firestore
+  rules`, `deploy firestore indexes`, `deploy hosting`, `deploy storage
+  rules`, `deploy all` and `cancel action`;
   `menuFirebaseProjectContent(builders: [...])` makes one submenu per project
   (dev, prod) when given several builders.
 

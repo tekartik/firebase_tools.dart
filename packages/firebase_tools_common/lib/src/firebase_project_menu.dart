@@ -36,6 +36,10 @@ void menuFirebaseProjectBuilderContent({
     await builder.serve(controller: actionController);
   });
 
+  item('bump functions version', () async {
+    await builder.ffBumpVersion();
+  });
+
   item('deploy functions', () async {
     cancel();
     await builder.deployFunctions(controller: actionController);

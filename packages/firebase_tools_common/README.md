@@ -157,6 +157,8 @@ The builder is a `CommonAppBuilder` of `tekartik_common_build`, so
 Deploying or compiling the functions regenerates `lib/src/version.dart` first,
 in the firebase folder package and in the functions package, for those that
 have one — a bumped `pubspec.yaml` is never deployed with a stale version file.
+`ffBumpVersion` bumps the patch of the functions package and regenerates its
+version file (`bump functions version` in the menu).
 
 ## Exporting a firestore database
 

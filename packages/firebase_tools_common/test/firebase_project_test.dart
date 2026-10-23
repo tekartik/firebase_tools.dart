@@ -302,4 +302,81 @@ void main() {
       expect(_versionFile(path).existsSync(), isFalse);
     });
   });
+
+  group('ffBumpVersion', () {
+    FirebaseProjectBuilder builderAt(String path, {String? functionsSource}) =>
+        FirebaseProjectBuilder(
+          options: FirebaseProjectOptions(
+            projectId: 'my_project',
+            path: path,
+            functionsSource: functionsSource ?? 'functions',
+          ),
+        );
+
+    /// The `pubspec.yaml` content of the package at [path].
+    String pubspecAt(String path) =>
+        File(join(path, 'pubspec.yaml')).readAsStringSync();
+
+    test('bumps the functions patch and its version file', () async {
+      var path = _newFirebaseFolder('project_bump_version', {
+        'firebase.json': '{}',
+        'pubspec.yaml': _pubspecContent('test_dartff', '1.2.3'),
+        join('lib', 'src', 'version.dart'): _versionFileContent('1.2.3'),
+        join('functions', 'pubspec.yaml'): _pubspecContent(
+          'test_dartff_functions',
+          '4.5.6',
+        ),
+        join('functions', 'lib', 'src', 'version.dart'): _versionFileContent(
+          '4.5.6',
+        ),
+      });
+      await builderAt(path).ffBumpVersion();
+      var functionsPath = join(path, 'functions');
+      expect(pubspecAt(functionsPath), contains('version: 4.5.7'));
+      expect(
+        _versionFile(functionsPath).readAsStringSync(),
+        contains("const packageVersionText = '4.5.7';"),
+      );
+      // The firebase folder package is left alone.
+      expect(pubspecAt(path), contains('version: 1.2.3'));
+      expect(
+        _versionFile(path).readAsStringSync(),
+        contains("const packageVersionText = '1.2.3';"),
+      );
+    });
+
+    test('bumps a functions package without a version file', () async {
+      var path = _newFirebaseFolder('project_bump_version_no_file', {
+        'firebase.json': '{}',
+        join('functions', 'pubspec.yaml'): _pubspecContent(
+          'test_dartff_functions',
+          '4.5.6',
+        ),
+      });
+      await builderAt(path).ffBumpVersion();
+      var functionsPath = join(path, 'functions');
+      expect(pubspecAt(functionsPath), contains('version: 4.5.7'));
+      expect(_versionFile(functionsPath).existsSync(), isFalse);
+    });
+
+    test('bumps the functionsSource folder', () async {
+      var path = _newFirebaseFolder('project_bump_version_source', {
+        'firebase.json': '{}',
+        join('server', 'pubspec.yaml'): _pubspecContent(
+          'test_dartff_server',
+          '0.0.1',
+        ),
+        join('server', 'lib', 'src', 'version.dart'): _versionFileContent(
+          '0.0.1',
+        ),
+      });
+      await builderAt(path, functionsSource: 'server').ffBumpVersion();
+      var serverPath = join(path, 'server');
+      expect(pubspecAt(serverPath), contains('version: 0.0.2'));
+      expect(
+        _versionFile(serverPath).readAsStringSync(),
+        contains("const packageVersionText = '0.0.2';"),
+      );
+    });
+  });
 }
