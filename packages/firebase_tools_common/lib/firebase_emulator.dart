@@ -4,7 +4,12 @@
 /// aggregated here so a tool only needs `tekartik_firebase_tools`.
 library;
 
-export 'src/emulator.dart' show FirebaseEmulator, FirebaseRunningEmulator;
+export 'src/emulator.dart'
+    show
+        FirebaseEmulator,
+        FirebaseRunningEmulator,
+        firebaseEmulatorLockName,
+        firebaseEmulatorLockTimeout;
 export 'src/emulator_options.dart' show FirebaseEmulatorOptions;
 export 'src/emulator_service.dart'
     show

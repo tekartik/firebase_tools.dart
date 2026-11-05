@@ -1,3 +1,12 @@
+## 0.1.9
+
+- `FirebaseEmulatorService.start` holds a machine wide lock (`GlobalLock`
+  of synchronized 3.6.0, `firebaseEmulatorLockName`) until
+  `FirebaseEmulator.stop`, an emulator already running included: another
+  isolate or process starting the emulator waits for it (at most
+  `lockTimeout`, 10 minutes by default) instead of clashing on its ports or
+  having its emulator stopped.
+
 ## 0.1.8
 
 - `FirebaseEmulator.stop` waits for the firebase cli to exit (killed after

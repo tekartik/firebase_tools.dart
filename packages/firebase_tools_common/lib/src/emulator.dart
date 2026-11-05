@@ -3,7 +3,50 @@ import 'dart:io';
 
 import 'package:dev_build/shell.dart';
 import 'package:meta/meta.dart';
+import 'package:synchronized/global_lock.dart';
 import 'emulator_options.dart';
+
+/// The name of the [GlobalLock] held from `FirebaseEmulatorService.start` to
+/// [FirebaseEmulator.stop], by the isolates and processes of the machine: the
+/// emulator ports are those of the machine, two users of the emulator suite
+/// would clash (one stopping the emulator of the other, a start failing on a
+/// port in use, a running emulator with other options).
+///
+/// A tool starting the emulator suite on its own (`firebase emulators:exec`)
+/// can hold it too.
+const firebaseEmulatorLockName = 'tekartik_firebase_emulator';
+
+/// The default wait for the emulator lock in `FirebaseEmulatorService.start`.
+const firebaseEmulatorLockTimeout = Duration(minutes: 10);
+
+/// Acquires the emulator [lock] ([firebaseEmulatorLockName] by default),
+/// telling once on stderr when another isolate or process holds it, waiting
+/// at most [timeout] ([firebaseEmulatorLockTimeout] by default).
+@internal
+Future<GlobalLockHandle> firebaseEmulatorLock({
+  Duration? timeout,
+  GlobalLock? lock,
+}) async {
+  lock ??= GlobalLock(firebaseEmulatorLockName);
+  timeout ??= firebaseEmulatorLockTimeout;
+  try {
+    return await lock.acquire(timeout: Duration.zero);
+  } on TimeoutException {
+    stderr.writeln(
+      'Waiting for the firebase emulator lock (${lock.name}), used by '
+      'another process or isolate...',
+    );
+  }
+  try {
+    return await lock.acquire(timeout: timeout);
+  } on TimeoutException catch (e) {
+    throw TimeoutException(
+      'Firebase emulator still used by another process or isolate after '
+      '$timeout (${e.message})',
+      timeout,
+    );
+  }
+}
 
 /// A running Firebase emulator instance.
 class FirebaseEmulator {
@@ -19,6 +62,9 @@ class FirebaseEmulator {
   final Future _done;
   final Future<Process>? _process;
 
+  /// The emulator lock, held until [stop].
+  final GlobalLockHandle? _lock;
+
   FirebaseEmulator._({
     required this.path,
     required this.options,
@@ -26,12 +72,19 @@ class FirebaseEmulator {
     required this._shell,
     required this._done,
     required this._process,
+    required this._lock,
   });
 
-  /// Stops the emulator: interrupts the firebase cli (its clean shutdown) and
-  /// waits for it to exit, the emulator ports free.
-  Future<void> stop() =>
-      firebaseEmulatorStop(shell: _shell, done: _done, process: _process);
+  /// Stops the emulator: interrupts the firebase cli (its clean shutdown),
+  /// waits for it to exit, the emulator ports free, then releases the
+  /// emulator lock (see [firebaseEmulatorLockName]).
+  Future<void> stop() async {
+    try {
+      await firebaseEmulatorStop(shell: _shell, done: _done, process: _process);
+    } finally {
+      await _lock?.release();
+    }
+  }
 }
 
 /// Stops an emulator started by [shell] ([done] its run): interrupts the
@@ -72,6 +125,7 @@ Future<FirebaseEmulator> createEmulator({
   required Future done,
   required String projectId,
   Future<Process>? process,
+  GlobalLockHandle? lock,
 }) async {
   return FirebaseEmulator._(
     path: path,
@@ -80,8 +134,17 @@ Future<FirebaseEmulator> createEmulator({
     shell: shell,
     done: done,
     process: process,
+    lock: lock,
   );
 }
+
+/// An emulator already running, not started by us, [lock] (the emulator lock)
+/// held until [FirebaseEmulator.stop].
+@internal
+FirebaseEmulator createRunningEmulator({
+  required String projectId,
+  GlobalLockHandle? lock,
+}) => FirebaseRunningEmulator._(projectId: projectId, lock: lock);
 
 /// A running Firebase emulator instance.
 class FirebaseRunningEmulator implements FirebaseEmulator {
@@ -95,6 +158,9 @@ class FirebaseRunningEmulator implements FirebaseEmulator {
   Future<Process>? get _process => null;
 
   @override
+  final GlobalLockHandle? _lock;
+
+  @override
   FirebaseEmulatorOptions get options => throw UnimplementedError();
 
   @override
@@ -104,10 +170,14 @@ class FirebaseRunningEmulator implements FirebaseEmulator {
   final String projectId;
 
   /// Creates a new [FirebaseRunningEmulator] for the project at [path].
-  FirebaseRunningEmulator({required this.projectId});
+  FirebaseRunningEmulator({required this.projectId}) : _lock = null;
 
+  FirebaseRunningEmulator._({required this.projectId, required this._lock});
+
+  /// Leaves the emulator running (not started here), releases the emulator
+  /// lock if held.
   @override
   Future<void> stop() async {
-    // no-op
+    await _lock?.release();
   }
 }

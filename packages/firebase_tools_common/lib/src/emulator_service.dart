@@ -5,6 +5,7 @@ import 'package:dev_build/package.dart';
 import 'package:dev_build/shell.dart';
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
+import 'package:synchronized/global_lock.dart';
 import 'package:tekartik_common_utils/common_utils_import.dart';
 import 'package:tekartik_common_utils/map_utils.dart';
 import 'emulator.dart';
@@ -371,9 +372,29 @@ class FirebaseEmulatorService {
   /// Starts the Firebase emulator with the given [options].
   ///
   /// Waits until all emulators are ready before returning.
+  ///
+  /// The emulator lock ([firebaseEmulatorLockName]) is held from here to
+  /// [FirebaseEmulator.stop], even when an emulator already running is used:
+  /// another isolate or process starting the emulator waits for it, at most
+  /// [lockTimeout] ([firebaseEmulatorLockTimeout] by default).
   Future<FirebaseEmulator> start({
     FirebaseEmulatorOptions? options,
     Duration? timeout,
+    Duration? lockTimeout,
+  }) async {
+    var lock = await firebaseEmulatorLock(timeout: lockTimeout);
+    try {
+      return await _start(options: options, timeout: timeout, lock: lock);
+    } catch (_) {
+      await lock.release();
+      rethrow;
+    }
+  }
+
+  Future<FirebaseEmulator> _start({
+    required FirebaseEmulatorOptions? options,
+    required Duration? timeout,
+    required GlobalLockHandle lock,
   }) async {
     // 10 ok for node
     // 30 needed for dart
@@ -393,7 +414,7 @@ class FirebaseEmulatorService {
         );
       }
 
-      return FirebaseRunningEmulator(projectId: projectId);
+      return createRunningEmulator(projectId: projectId, lock: lock);
     }
 
     var controller = ShellLinesController();
@@ -434,6 +455,7 @@ class FirebaseEmulatorService {
         done: done,
         projectId: projectId,
         process: processCompleter.future,
+        lock: lock,
       );
     } catch (e) {
       completer.safeCompleteError(e);
