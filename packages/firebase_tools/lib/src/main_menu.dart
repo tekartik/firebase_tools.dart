@@ -13,7 +13,15 @@ import 'firebase_admin_sdk_context.dart';
 /// defaulting to the current directory. [projectId] names the project to reach;
 /// it defaults to the `default` project of the `.firebaserc` of [path] — pass
 /// one explicitly to act on another project, or pass [context] to decide
-/// entirely for yourself.
+/// entirely for yourself. The `.firebaserc` is only read when a submenu left
+/// to its default options needs it (a [StateError] without one): a tool
+/// passing [context] and the options of the submenus it keeps needs no
+/// firebase folder.
+///
+/// The default emulator options start the emulators on that project id: a
+/// function the emulator runs reaches, in production, the services that are
+/// not emulated. Pass [emulatorOptions] with a `demo-` project id to keep
+/// everything local.
 ///
 /// [context] is what the explorer acts on, the ambient admin sdk credentials of
 /// [projectId] by default (see [newFirebaseToolsContextAdminSdk]).
@@ -39,9 +47,12 @@ void menuFirebaseToolsContent({
   bool withExport = true,
 }) {
   var folderPath = path ?? '.';
-  // Read once: every submenu wants it, and reading it twice would report the
-  // same failure twice.
-  var folderProjectId =
+  // Read once and only when a submenu needs it (one left to its default
+  // options): reading it twice would report the same failure twice, and a
+  // tool whose submenus all have their own options or context needs no
+  // firebase folder.
+  String? readProjectId;
+  String folderProjectId() => readProjectId ??=
       projectId ??
       projectOptions?.projectId ??
       exportOptions?.projectId ??
@@ -53,7 +64,7 @@ void menuFirebaseToolsContent({
         service: FirebaseEmulatorService(path: folderPath),
         options:
             emulatorOptions ??
-            FirebaseEmulatorOptions(projectId: folderProjectId),
+            FirebaseEmulatorOptions(projectId: folderProjectId()),
       );
     });
   }
@@ -65,7 +76,7 @@ void menuFirebaseToolsContent({
           options:
               projectOptions ??
               FirebaseProjectOptions(
-                projectId: folderProjectId,
+                projectId: folderProjectId(),
                 path: folderPath,
               ),
         ),
@@ -78,7 +89,7 @@ void menuFirebaseToolsContent({
       menuFirebaseExplorerContent(
         context:
             context ??
-            newFirebaseToolsContextAdminSdk(projectId: folderProjectId),
+            newFirebaseToolsContextAdminSdk(projectId: folderProjectId()),
       );
     });
   }
@@ -89,7 +100,7 @@ void menuFirebaseToolsContent({
         exporter: FirestoreExporter(
           options:
               exportOptions ??
-              FirestoreExportOptions(projectId: folderProjectId),
+              FirestoreExportOptions(projectId: folderProjectId()),
         ),
       );
     });

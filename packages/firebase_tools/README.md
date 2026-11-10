@@ -57,6 +57,9 @@ submenu. See [`example/`](example) for both.
 ## Reaching a project
 
 ```dart
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:tekartik_firebase_tools/firebase_tools.dart';
 
 // Ambient credentials (`gcloud auth application-default login`). Pass no
@@ -66,8 +69,11 @@ var context = newFirebaseToolsContextAdminSdk(projectId: 'my_project');
 // ...or the project a firebase folder deploys to, from its `.firebaserc`.
 var folderContext = newFirebaseToolsContextFirebaseFolder(path: 'deploy');
 
-// ...or a service account json, for credentials checked in a private repo.
-var serviceAccountContext = newFirebaseToolsContextServiceAccountMap(map);
+// ...or a service account json, for credentials checked in a private repo
+// (it reaches the project_id of the json).
+var serviceAccountContext = newFirebaseToolsContextServiceAccountMap(
+  jsonDecode(File('service_account.json').readAsStringSync()) as Map,
+);
 ```
 
 All three build the app on first use, so declaring a menu over one costs no
@@ -79,6 +85,30 @@ firestore console shows them in italics.
 What to do with a context is the common package's business; see
 [its README](../firebase_tools_common/README.md#exploring-a-project) for the
 auth, firestore and storage explorers and the path helpers.
+
+## Platforms
+
+Dart VM only (Linux, macOS, Windows), in `tool/` scripts: the admin sdk,
+`dart:io`, and the `firebase` cli (deploy, emulators) and `gcloud` cli
+(export) on the PATH. The explorer needs `gcloud auth application-default
+login` (or `GOOGLE_APPLICATION_CREDENTIALS`), a service account, or nothing
+on the in-memory implementations of the tests (`FirebaseToolsContext.services`).
+
+## Pitfalls
+
+- The `.firebaserc` of `path` is read only for a submenu left to its default
+  options, and throws a `StateError` without a firebase folder: a tool outside
+  one passes `projectId`, or a `context` and the options of the submenus it
+  keeps (or drops them with `withEmulator: false`...).
+- The default emulator submenu starts the emulators on the real project id:
+  a function it runs reaches, in production, the services that are not
+  emulated. Pass `emulatorOptions: FirebaseEmulatorOptions(projectId:
+  'demo-my-app')` to keep everything local.
+- A service account context reaches the `project_id` of its json:
+  `newFirebaseToolsContextServiceAccountMap(map, projectId: ...)` only changes
+  what the menus show, never pass another project.
+- Everything goes through privileged credentials (auth users read and
+  created, firestore rules bypassed): a dev tool, never an app dependency.
 
 ## Agent skills
 

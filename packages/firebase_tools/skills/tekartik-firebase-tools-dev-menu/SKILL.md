@@ -38,9 +38,15 @@ reaches a real project with full privileges.
   one, `context` to decide the credentials yourself, `emulatorOptions` /
   `projectOptions` / `exportOptions` to configure the emulator, deploy and
   export submenus, and `withEmulator` / `withProject` / `withExplorer` /
-  `withExport: false` to drop a submenu. Without a firebase folder, drop the
-  emulator and project submenus or call
+  `withExport: false` to drop a submenu. The `.firebaserc` of `path` is only
+  read for a submenu left to its default options (a `StateError` without a
+  firebase folder): a tool outside one passes `projectId`, or `context` plus
+  the options of the submenus it keeps, or calls
   `menuFirebaseExplorerContent(context:)` directly.
+* The default emulator options start the emulators on that project id, a
+  real one: a function the emulator runs reaches, in production, the
+  services that are not emulated. `emulatorOptions:
+  FirebaseEmulatorOptions(projectId: 'demo-...')` keeps it local.
 * Reaching a project: `newFirebaseToolsContextAdminSdk(projectId:)` uses the
   ambient credentials (`gcloud auth application-default login`, or the
   service account of the machine). With no `projectId` at all the
@@ -49,7 +55,9 @@ reaches a real project with full privileges.
   `newFirebaseToolsContextFirebaseFolder(path:)` takes the project id from
   the folder's `.firebaserc` and throws a `StateError` when it has none.
   `newFirebaseToolsContextServiceAccountMap(jsonDecode(json))` uses a service
-  account json checked into a private repo, its `project_id` by default.
+  account json checked into a private repo and reaches its `project_id`: a
+  `projectId:` argument is only what the menus report, not the project
+  reached (one service account per project).
   `storageBucket:` overrides the default bucket on all three.
 * All three build the app on first use, so declaring a menu costs no
   credential lookup, and all three wire `firestoreAdminSdkDocumentIdsLister`,

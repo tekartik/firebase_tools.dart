@@ -3,13 +3,14 @@
 //
 // Run it from a firebase folder (the one holding `firebase.json`), or name one:
 //
-//     dart run example/firebase_tools_menu.dart [path]
+//     dart run example/firebase_tools_menu.dart [path [menu arguments]]
 //
 // Reaching the real project needs the ambient admin credentials, i.e.
 // `gcloud auth application-default login`.
 import 'package:tekartik_firebase_tools/menu.dart';
 
 Future<void> main(List<String> arguments) => firebaseToolsMenuMain(
-  arguments,
+  // The menu arguments (items by index) come after the path.
+  arguments.skip(1).toList(),
   path: arguments.isEmpty ? '.' : arguments.first,
 );

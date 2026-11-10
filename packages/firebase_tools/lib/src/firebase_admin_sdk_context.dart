@@ -68,7 +68,10 @@ FirebaseToolsContext newFirebaseToolsContextAdminSdk({
 /// This is the flavour to use when the credentials are checked into a private
 /// repository instead of coming from the environment.
 ///
-/// [projectId] defaults to the `project_id` of [serviceAccountMap].
+/// The project reached is always the `project_id` of [serviceAccountMap]
+/// (the admin sdk app of a service account takes no other project id).
+/// [projectId] is only what the context reports, the explorer menus show it:
+/// it defaults to that `project_id`, never pass another one.
 /// [storageBucket] overrides the default bucket of the project.
 FirebaseToolsContext newFirebaseToolsContextServiceAccountMap(
   Map serviceAccountMap, {
