@@ -41,9 +41,17 @@ re-exports it.
   (180 s timeout by default; pass `timeout:` for slow dart functions). If an
   emulator hub already answers on `localhost:4400` with every requested
   service, nothing is started and a `FirebaseRunningEmulator` comes back,
-  whose `stop()` is a no-op: test `emulator is FirebaseRunningEmulator` when
-  the script must report it. If the running hub lacks a requested service,
-  `start` throws an `UnsupportedError`.
+  whose `stop()` leaves the emulators running (it only releases the lock
+  below): test `emulator is FirebaseRunningEmulator` when the script must
+  report it. If the running hub lacks a requested service, `start` throws an
+  `UnsupportedError`; with no `only*` option nothing is checked, and the hub
+  does not tell which project it emulates.
+* `start` holds a machine wide lock (`firebaseEmulatorLockName`, a
+  `GlobalLock` of synchronized) until `stop()`, a reused emulator included:
+  another process or isolate starting the emulators waits for it, at most
+  `lockTimeout` (`firebaseEmulatorLockTimeout`, 10 minutes), then gets a
+  `TimeoutException`. A script that never stops its emulator blocks the
+  others.
 * `FirebaseEmulatorOptions`: `projectId` (else read from `.firebaserc` through
   `firebase -j use`, slower), `onlyAuth` / `onlyFirestore` / `onlyStorage` /
   `onlyFunctions` / `onlyPubsub` / `onlyHosting` (combine them for
@@ -51,17 +59,18 @@ re-exports it.
   none means every emulator of `firebase.json`), `debug` (`--debug`),
   `persistPath` (`--import <path> --export-on-exit <path>`, keeps the data
   between runs), `processStartMode`. `copyWith` derives a variant.
-* Always `await emulator.stop()` (sigint, then waits for the process) in a
-  `tearDownAll` or before the script exits. A script that must stay up awaits
+* Always `await emulator.stop()` (sigint, then waits for the process, killed
+  after 30 s, then releases the lock) in a `tearDownAll` or before the script
+  exits. A script that must stay up awaits
   `ProcessSignal.sigint.watch().first` then stops it; from a terminal Ctrl+C
   also reaches the `firebase` child, `stop()` then just waits for it.
 * `checkStatus()` returns an `EmulatorServiceStatus`: `running` and
   `supported`, and for an `EmulatorServiceRunningStatus` the `authPort`,
-  `firestorePort`, `storagePort`, `functionsPort` and `pubsubPort` actually
-  served (`null` when that emulator is not up). Use it to skip a test suite
-  rather than fail it when the emulators are down, or to pick the ports the
-  client connects to. `checkStatus(force: true)` re-runs the setup checks,
-  `verbose: true` prints the hub answer.
+  `firestorePort`, `storagePort`, `functionsPort`, `pubsubPort` and
+  `hostingPort` actually served (`null` when that emulator is not up). Use it
+  to skip a test suite rather than fail it when the emulators are down, or to
+  pick the ports the client connects to. `checkStatus(force: true)` re-runs
+  the setup checks, `verbose: true` prints the hub answer.
 * In a `dev_build` menu, `menuFirebaseEmulatorContent(service:, options:)`
   (`package:tekartik_firebase_tools_common/menu.dart`) declares `status`,
   `project id`, `start`, `start auth only` / `firestore only` /
@@ -70,6 +79,14 @@ re-exports it.
 * The ports are the ones of `firebase.json`; keep the client side (host,
   ports, project id) in one pure dart file shared by the app, the tests and
   the scripts rather than repeating the literals.
+* An emulator started on a real project id lets the functions it runs reach
+  the services that are not emulated in **that project** (the firebase cli
+  warns "will affect production"): use a `demo-` project id for anything
+  that only needs the emulators. A client going through an admin sdk finds
+  the emulators by the `FIRESTORE_EMULATOR_HOST` /
+  `FIREBASE_AUTH_EMULATOR_HOST` / `FIREBASE_STORAGE_EMULATOR_HOST`
+  variables of its process environment, set before it starts (a zone
+  override does not reach the test bodies under `dart test`).
 
 ## Examples
 
@@ -135,15 +152,28 @@ Future<void> main() async {
 ### Test suite starting its own emulator
 
 ```dart
-late FirebaseEmulator emulator;
+@TestOn('vm')
+library;
 
-setUpAll(() async {
-  emulator = await FirebaseEmulatorService(path: 'emulator').start(
-    options: FirebaseEmulatorOptions(
-      onlyFirestore: true,
-      persistPath: '.data', // imported at start, exported on exit
-    ),
-  );
-});
-tearDownAll(() => emulator.stop());
+import 'package:tekartik_firebase_tools_common/firebase_emulator.dart';
+import 'package:test/test.dart';
+
+void main() {
+  late FirebaseEmulator emulator;
+
+  setUpAll(() async {
+    emulator = await FirebaseEmulatorService(path: 'emulator').start(
+      options: FirebaseEmulatorOptions(
+        projectId: 'demo-my-app',
+        onlyFirestore: true,
+        persistPath: '.data', // imported at start, exported on exit
+      ),
+    );
+  });
+  tearDownAll(() => emulator.stop());
+
+  test('firestore emulator', () async {
+    // ...
+  }, timeout: const Timeout(Duration(minutes: 2)));
+}
 ```

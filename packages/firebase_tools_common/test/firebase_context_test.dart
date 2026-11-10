@@ -67,6 +67,49 @@ void main() {
     expect(built, 1);
   });
 
+  test('a failed build is not kept, the next use builds again', () async {
+    var built = 0;
+    var context = FirebaseToolsContext(
+      servicesBuilder: () async {
+        built++;
+        if (built == 1) {
+          // e.g. no credentials yet, or no network.
+          throw StateError('no credentials');
+        }
+        return FirebaseToolsServices(
+          firebaseApp: newFirebaseAppMemory(),
+          authService: newFirebaseAuthServiceMemory(),
+          firestoreService: newFirestoreServiceMemory(),
+          storageService: newStorageServiceMemory(),
+        );
+      },
+    );
+    await expectLater(context.services, throwsStateError);
+    var services = await context.services;
+    expect(built, 2);
+    expect(await context.services, same(services));
+    expect(built, 2);
+  });
+
+  test('concurrent first uses share one build', () async {
+    var built = 0;
+    var context = FirebaseToolsContext(
+      servicesBuilder: () async {
+        built++;
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+        return FirebaseToolsServices(
+          firebaseApp: newFirebaseAppMemory(),
+          authService: newFirebaseAuthServiceMemory(),
+          firestoreService: newFirestoreServiceMemory(),
+          storageService: newStorageServiceMemory(),
+        );
+      },
+    );
+    var all = await Future.wait([context.services, context.services]);
+    expect(all.first, same(all.last));
+    expect(built, 1);
+  });
+
   test('gives an explorer for each service', () async {
     var context = _newMemoryContext();
     expect(await context.authExplorer, isA<FirebaseAuthExplorer>());

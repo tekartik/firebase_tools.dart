@@ -30,9 +30,10 @@ runs on the admin sdk (a real project) and on the in-memory implementations
   rules.
 * Declaring a context costs nothing: the app is built on the first
   `context.auth` / `firestore` / `storage` / `bucket()` / `*Explorer` access
-  and kept, so a menu can be declared over it freely. `projectId` and
-  `storageBucket` are what the tool reports; the credentials decide what is
-  really reached.
+  and kept, so a menu can be declared over it freely; a failed build (no
+  credentials yet, no network) is not kept, the next access builds again.
+  `projectId` and `storageBucket` are what the tool reports; the credentials
+  decide what is really reached.
 * `context.authExplorer`: `findUserByEmail(email)` and `findUser(uid)`
   return `null` when unknown; `listUsers(maxResults:, pageToken:)` needs an
   implementation that can enumerate users, check `supportsListUsers` or
@@ -66,8 +67,10 @@ runs on the admin sdk (a real project) and on the in-memory implementations
 * `context.storageExplorer` browses `context.bucket()` (the default bucket,
   or `storageBucket`). Directories are inferred from the `/` of the file
   names, so an empty directory does not exist. `list(path:, filter:,
-  maxResults:)` gives `directories` and `files` one level deep, `listAll` the
-  flat recursive files; `entry.path` is the full name, `entry.relativeTo(dir)`
+  maxResults:)` gives `directories` and `files` one level deep (grouped from
+  the first `maxResults` objects of a recursive listing: with a cap, a
+  directory with many files deeper down hides what sorts after them),
+  `listAll` the flat recursive files; `entry.path` is the full name, `entry.relativeTo(dir)`
   the name under a directory, `entry.size` / `dateUpdated` / `contentType`
   come with the listing. `metadata`, `exists`, `readAsString`,
   `readAsBytes`, `writeAsString` and `delete` take a path relative to the

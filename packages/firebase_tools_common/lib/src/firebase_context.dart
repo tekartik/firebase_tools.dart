@@ -106,10 +106,27 @@ class FirebaseToolsContext {
     servicesBuilder: () async => services,
   );
 
-  Future<FirebaseToolsServices>? _services;
+  /// The built services, kept once built.
+  FirebaseToolsServices? _services;
+
+  /// The build in progress, kept only while pending: a failed build is not
+  /// kept (the next use builds again), and no completed future outlives the
+  /// zone it was made in.
+  Future<FirebaseToolsServices>? _pendingServices;
 
   /// The app and its services, built on first use and kept afterwards.
-  Future<FirebaseToolsServices> get services => _services ??= servicesBuilder();
+  ///
+  /// When [servicesBuilder] fails (no credentials yet, no network...), the
+  /// error comes back and the next use calls it again.
+  Future<FirebaseToolsServices> get services {
+    var services = _services;
+    if (services != null) {
+      return Future.value(services);
+    }
+    return _pendingServices ??= servicesBuilder()
+        .then((services) => _services = services)
+        .whenComplete(() => _pendingServices = null);
+  }
 
   /// The auth of the project.
   Future<FirebaseAuth> get auth async => (await services).auth;

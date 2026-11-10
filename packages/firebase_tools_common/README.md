@@ -26,13 +26,21 @@ privileged credentials. That belongs in a dev tool, never in an app.
 
 ## Setup
 
+A git dependency (not on pub.dev), a dev dependency of an app (its `tool/`
+scripts and tests):
+
 ```yaml
-dependencies:
+dev_dependencies:
   tekartik_firebase_tools_common:
     git:
       url: https://github.com/tekartik/firebase_tools.dart
       path: packages/firebase_tools_common
 ```
+
+Platforms: the emulator, the deploy commands and the export start the
+`firebase` and `gcloud` command lines, Dart VM only (Linux, macOS, Windows).
+`firebase_explorer.dart` runs wherever its firebase implementation runs, and
+`firebase_manager.dart` on the web too.
 
 ## Entry points
 
@@ -47,11 +55,43 @@ dependencies:
 | `package:tekartik_firebase_tools_common/firebase_manager_io.dart` | the same plus the Firebase CLI login and gcloud token providers |
 | `package:tekartik_firebase_tools_common/menu.dart` | the `dev_build` menus |
 
+## Starting the emulators
+
+`FirebaseEmulatorService` runs `firebase emulators:start` in a firebase folder
+(`firebase.json` and `.firebaserc`) and returns once every emulator is ready:
+
+```dart
+import 'package:tekartik_firebase_tools_common/firebase_emulator.dart';
+
+Future<void> main() async {
+  var service = FirebaseEmulatorService(path: 'emulator');
+  var emulator = await service.start(
+    options: FirebaseEmulatorOptions(
+      projectId: 'demo-my-app', // a demo- id: no real project behind it
+      onlyAuth: true,
+      onlyFirestore: true,
+    ),
+  );
+  try {
+    // ... talk to localhost:9099 (auth) and localhost:8080 (firestore)
+  } finally {
+    await emulator.stop();
+  }
+}
+```
+
+`start` holds a machine wide lock (`firebaseEmulatorLockName`) until `stop`:
+another process or isolate starting the emulators waits for it (10 minutes at
+most) instead of clashing on the ports, so always `stop` it. An emulator hub
+already running on `localhost:4400` with the requested services is reused
+rather than started again.
+
 ## Exploring a project
 
 A `FirebaseToolsContext` names the project and builds its services on first
 use — declaring a menu over one costs no network call and no credential
-lookup.
+lookup. A failed build (no credentials yet, no network) is not kept: the next
+use builds again.
 
 This package only knows how to build one over services you already have:
 
@@ -297,6 +337,25 @@ selected user and the name filter carry across them.
 
 For the whole thing in one call, see `firebaseToolsMenuMain` in
 `tekartik_firebase_tools`.
+
+## Pitfalls
+
+* An emulator started on a real project id runs the functions with the
+  services that are not emulated reaching **that project** (the firebase cli
+  warns "calls to these services ... will affect production"). Use a `demo-`
+  project id for anything that only needs the emulators.
+* A test or script reaching the emulators through an admin sdk needs the
+  emulator hosts in its process environment (`FIRESTORE_EMULATOR_HOST`,
+  `FIREBASE_AUTH_EMULATOR_HOST`, ...), set before it starts.
+* A running emulator hub is reused when it serves the requested `only*`
+  services; with no `only*` option nothing is checked, and the hub does not
+  tell which project it emulates.
+* `StorageExplorer.list(maxResults:)` groups the first `maxResults` objects
+  of a recursive listing (the menu passes its limit, 100): a directory with
+  many files deeper down can hide what sorts after them.
+* `FirebaseProjectBuilder` deploys to `options.projectId`; build the options
+  with `FirebaseProjectOptions.firebaseFolder(path:)` to deploy where the
+  folder's `.firebaserc` points, nowhere else.
 
 ## Agent skills
 

@@ -76,9 +76,9 @@ String firestorePathJoin(String path, String segment) =>
 
 /// Resolves [target] against the current path [current], the way `cd` does.
 ///
-/// [target] is absolute when it starts with `/` (or is empty), relative
-/// otherwise. A `..` segment goes one level up (and is a no-op at the root),
-/// a `.` segment stays put.
+/// [target] is absolute when it starts with `/`, relative otherwise (an empty
+/// [target] stays at [current]). A `..` segment goes one level up (and is a
+/// no-op at the root), a `.` segment stays put.
 ///
 /// Returns the normalized resulting path.
 String firestorePathResolve(String current, String target) =>

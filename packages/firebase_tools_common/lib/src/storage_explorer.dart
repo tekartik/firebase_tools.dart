@@ -174,7 +174,9 @@ class StorageExplorer {
   ///
   /// [filter] keeps only the entries whose name matches, see
   /// [storageNameMatchesFilter]; it applies to directory and file names alike.
-  /// [maxResults] caps how many files the backend returns, before grouping.
+  /// [maxResults] caps how many files the backend returns, before grouping:
+  /// the listing is recursive, so with a cap a directory holding many files
+  /// deeper down can hide the entries that sort after them.
   Future<StorageExplorerListing> list({
     String? path,
     String? filter,
